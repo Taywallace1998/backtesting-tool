@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from products.classic_autocall import run_backtest as run_classic_backtest
 from products.phoenix_autocall import run_backtest as run_phoenix_backtest
+from charts import create_underlying_performance_chart, create_autocall_distribution_chart
+
 
 st.set_page_config(
     page_title="Autocall Backtesting Tool",
@@ -409,6 +410,12 @@ if uploaded_file is not None:
                 use_container_width=True
             )
 
+            autocall_fig = create_autocall_distribution_chart(
+                autocall_summary
+            )
+
+            st.pyplot(autocall_fig)
+
         # =========================
         # Underlying performance chart
         # =========================
@@ -440,24 +447,16 @@ if uploaded_file is not None:
                         * 100
                 )
 
-            fig, ax = plt.subplots()
-
-            for col in price_columns:
-                ax.plot(
-                    rebased_df[date_column],
-                    rebased_df[col],
-                    label=col
-                )
-
-            ax.set_title(
-                "Underlying Performance, Rebased to 100"
+            fig = create_underlying_performance_chart(
+                rebased_df,
+                date_column,
+                price_columns
             )
 
-            ax.set_xlabel("Date")
-            ax.set_ylabel("Rebased Performance")
-            ax.legend()
-
             st.pyplot(fig)
+
+        else:
+            st.warning("Please select at least one underlying.")
 
         st.write("Selected inputs:")
 
