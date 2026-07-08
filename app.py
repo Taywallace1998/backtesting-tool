@@ -4,6 +4,17 @@ import pandas as pd
 from products.classic_autocall import run_backtest as run_classic_backtest
 from products.phoenix_autocall import run_backtest as run_phoenix_backtest
 from charts import create_underlying_performance_chart, create_autocall_distribution_chart
+from excel_export import create_excel_export
+
+autocall_summary = None
+if "results" not in st.session_state:
+    st.session_state["results"] = None
+
+if "summary_stats" not in st.session_state:
+    st.session_state["summary_stats"] = None
+
+if "autocall_summary" not in st.session_state:
+    st.session_state["autocall_summary"] = None
 
 
 st.set_page_config(
@@ -30,6 +41,7 @@ product_type = st.sidebar.selectbox(
         "Classic Autocall",
         "Step-Down Autocall",
         "Phoenix Autocall",
+        "Step-Down Phoenix Autocall",
         "Participation"
     ],
     key="product_type"
@@ -68,7 +80,7 @@ autocall_trigger = st.sidebar.number_input(
     key="autocall_trigger"
 )
 
-if product_type == "Step-Down Autocall":
+if product_type in ["Step-Down Autocall", "Step-Down Phoenix Autocall"]:
     step_down_size = st.sidebar.number_input(
         "Step-Down per Observation (%)",
         min_value=0.0,
@@ -80,7 +92,7 @@ if product_type == "Step-Down Autocall":
 else:
     step_down_size = 0.0
 
-if product_type == "Phoenix Autocall":
+if product_type in ["Phoenix Autocall", "Step-Down Phoenix Autocall"]:
     income_trigger = st.sidebar.number_input(
         "Income Trigger (%)",
         min_value=0.0,
@@ -187,13 +199,13 @@ if uploaded_file is not None:
         {"Parameter": "Notional", "Value": notional}
     ]
 
-    if product_type == "Step-Down Autocall":
+    if product_type in ["Step-Down Autocall", "Step-Down Phoenix Autocall"]:
         summary_data.append({
             "Parameter": "Step-Down per Observation",
             "Value": f"{step_down_size}%"
         })
 
-    if product_type == "Phoenix Autocall":
+    if product_type in ["Phoenix Autocall", "Step-Down Phoenix Autocall"]:
         summary_data.append({
             "Parameter": "Income Trigger",
             "Value": f"{income_trigger}%"
@@ -212,7 +224,7 @@ if uploaded_file is not None:
     # Step-down schedule preview
     # =========================
 
-    if product_type == "Step-Down Autocall":
+    if product_type in ["Step-Down Autocall", "Step-Down Phoenix Autocall"]:
 
         if observation_frequency == "Annual":
             step_months = 12
@@ -277,7 +289,7 @@ if uploaded_file is not None:
                 notional=notional
             )
 
-        elif product_type == "Phoenix Autocall":
+        elif product_type in ["Phoenix Autocall", "Step-Down Phoenix Autocall"]:
 
             results = run_phoenix_backtest(
                 df=df,
@@ -291,7 +303,9 @@ if uploaded_file is not None:
                 memory_coupon=memory_coupon,
                 coupon_pa=coupon_pa,
                 capital_barrier=capital_barrier,
-                notional=notional
+                notional=notional,
+                step_down_size=step_down_size,
+                product_type=product_type
             )
 
         else:
@@ -415,6 +429,36 @@ if uploaded_file is not None:
             )
 
             st.pyplot(autocall_fig)
+
+            # =========================
+            # Excel Export
+            # =========================
+
+            excel_file = create_excel_export(
+                product_type=product_type,
+                tenor_years=tenor_years,
+                observation_frequency=observation_frequency,
+                first_call_month=first_call_month,
+                autocall_trigger=autocall_trigger,
+                step_down_size=step_down_size,
+                income_trigger=income_trigger,
+                memory_coupon=memory_coupon,
+                coupon_pa=coupon_pa,
+                capital_barrier=capital_barrier,
+                notional=notional,
+                date_column=date_column,
+                price_columns=price_columns,
+                results=results,
+                summary_stats=summary_stats,
+                autocall_summary=autocall_summary if total_autocalled > 0 else None
+            )
+
+            st.download_button(
+                label="📊 Download Excel Report",
+                data=excel_file,
+                file_name="autocall_backtest_results.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
         # =========================
         # Underlying performance chart
