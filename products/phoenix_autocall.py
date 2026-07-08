@@ -91,7 +91,9 @@ def run_single_backtest(
 
             total_coupon_paid_life += coupon_paid
             last_coupon_paid = coupon_paid
-            coupons_paid_count += 1
+            coupons_paid_count += round(
+                coupon_paid / coupon_for_period
+            )
 
             payoff = notional * (1 + total_coupon_paid_life / 100)
 
@@ -135,7 +137,9 @@ def run_single_backtest(
 
             total_coupon_paid_life += coupon_paid
             last_coupon_paid = coupon_paid
-            coupons_paid_count += 1
+            coupons_paid_count += round(
+                coupon_paid / coupon_for_period
+            )
 
         else:
 
