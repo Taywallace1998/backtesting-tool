@@ -97,6 +97,10 @@ def run_single_backtest(
 
             payoff = notional * (1 + total_coupon_paid_life / 100)
 
+            annualised_return = (
+                                        ((1 + total_coupon_paid_life / 100) ** (1 / (month / 12))) - 1
+                                ) * 100
+
             coupon_opportunities_until_exit = (
                     coupon_observation_months.index(month) + 1
             )
@@ -124,6 +128,7 @@ def run_single_backtest(
                 2
                 ),
                 "Return (%)": round(total_coupon_paid_life, 2),
+                "Annualised Return (%)": round(annualised_return, 2),
                 "Payoff": round(payoff, 2)
             }
 
@@ -176,6 +181,10 @@ def run_single_backtest(
 
     final_return = (payoff / notional - 1) * 100
 
+    annualised_return = (
+                                ((1 + final_return / 100) ** (1 / tenor_years)) - 1
+                        ) * 100
+
     coupon_opportunities_until_exit = len(coupon_observation_months)
 
 
@@ -202,6 +211,7 @@ def run_single_backtest(
             2
         ),
         "Return (%)": round(final_return, 2),
+        "Annualised Return (%)": round(annualised_return, 2),
         "Payoff": round(payoff, 2)
     }
 
