@@ -83,7 +83,9 @@ def create_autocall_distribution_chart(autocall_summary):
     fig, ax = plt.subplots(figsize=(10, 5))
 
     chart_data = autocall_summary[
-        autocall_summary["Autocall Test"] != "Total"
+        ~autocall_summary["Autocall Test"].isin(
+            ["Total", "Autocall Missed"]
+        )
     ].copy()
 
     x_labels = (
