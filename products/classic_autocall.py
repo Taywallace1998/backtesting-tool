@@ -77,6 +77,10 @@ def run_single_backtest(
         if worst_performance >= current_autocall_trigger / 100:
             payoff = notional * (1 + coupon_return / 100)
 
+            annualised_return = (
+                                        ((1 + coupon_return / 100) ** (1 / (month / 12))) - 1
+                                ) * 100
+
             return {
                 "Trade Date": actual_trade_date.date(),
                 "Final Observation Date": obs_date.date(),
@@ -89,6 +93,7 @@ def run_single_backtest(
                 "Worst Performance (%)": round((worst_performance - 1) * 100, 2),
                 "Event": "Autocalled",
                 "Return (%)": round(coupon_return, 2),
+                "Annualised Return (%)": round(annualised_return, 2),
                 "Payoff": round(payoff, 2)
             }
 
@@ -117,6 +122,10 @@ def run_single_backtest(
         payoff = notional * worst_final_performance
         final_return = (payoff / notional - 1) * 100
 
+    annualised_return = (
+                                ((1 + final_return / 100) ** (1 / tenor_years)) - 1
+                        ) * 100
+
     return {
         "Trade Date": actual_trade_date.date(),
         "Final Observation Date": maturity_actual_date.date(),
@@ -128,6 +137,7 @@ def run_single_backtest(
         "Worst Performance (%)": round((worst_final_performance - 1) * 100, 2),
         "Event": final_event,
         "Return (%)": round(final_return, 2),
+        "Annualised Return (%)": round(annualised_return, 2),
         "Payoff": round(payoff, 2)
     }
 
