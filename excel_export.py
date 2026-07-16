@@ -1,5 +1,6 @@
 from io import BytesIO
 import pandas as pd
+from openpyxl.drawing.image import Image
 
 
 def create_excel_export(
@@ -18,7 +19,9 @@ def create_excel_export(
     price_columns,
     results,
     summary_stats,
-    autocall_summary=None
+    autocall_summary=None,
+    underlying_performance_fig=None,
+    autocall_distribution_fig=None
 ):
     output = BytesIO()
 
@@ -81,7 +84,10 @@ def create_excel_export(
                 index=False
             )
 
-        if product_type == "Phoenix Autocall":
+        if product_type in [
+            "Phoenix Autocall",
+            "Step-Down Phoenix Autocall"
+        ]:
             phoenix_columns = [
                 col for col in results.columns
                 if col in [
@@ -101,6 +107,69 @@ def create_excel_export(
                     sheet_name="Phoenix Coupon Analysis",
                     index=False
                 )
+
+        # =========================
+        # Charts sheet
+        # =========================
+
+        workbook = writer.book
+        charts_sheet = workbook.create_sheet("Charts")
+
+        charts_sheet["A1"] = "Autocall Backtest Charts"
+        from openpyxl.styles import Font
+        charts_sheet["A1"].font = Font(
+            bold=True,
+            size=16
+        )
+
+        image_buffers = []
+
+        if autocall_distribution_fig is not None:
+            autocall_buffer = BytesIO()
+
+            autocall_distribution_fig.savefig(
+                autocall_buffer,
+                format="png",
+                dpi=150,
+                bbox_inches="tight"
+            )
+
+            autocall_buffer.seek(0)
+            image_buffers.append(autocall_buffer)
+
+            autocall_image = Image(autocall_buffer)
+            autocall_image.width = 900
+            autocall_image.height = 450
+
+            charts_sheet.add_image(
+                autocall_image,
+                "A3"
+            )
+
+        if underlying_performance_fig is not None:
+            underlying_buffer = BytesIO()
+
+            underlying_performance_fig.savefig(
+                underlying_buffer,
+                format="png",
+                dpi=150,
+                bbox_inches="tight"
+            )
+
+            underlying_buffer.seek(0)
+            image_buffers.append(underlying_buffer)
+
+            underlying_image = Image(underlying_buffer)
+            underlying_image.width = 900
+            underlying_image.height = 450
+
+            charts_sheet.add_image(
+                underlying_image,
+                "A28"
+            )
+
+        charts_sheet.sheet_view.showGridLines = False
+
 
     output.seek(0)
 
