@@ -196,7 +196,7 @@ if uploaded_file is not None:
         {"Parameter": "Autocall Trigger", "Value": f"{autocall_trigger}%"},
         {"Parameter": "Coupon p.a.", "Value": f"{coupon_pa}%"},
         {"Parameter": "Capital Barrier", "Value": f"{capital_barrier}%"},
-        {"Parameter": "Notional", "Value": notional}
+        {"Parameter": "Notional", "Value": f"{notional:,.0f}"}
     ]
 
     if product_type in ["Step-Down Autocall", "Step-Down Phoenix Autocall"]:
@@ -272,6 +272,9 @@ if uploaded_file is not None:
 
     if run_backtest_button:
 
+        autocall_fig = None
+        underlying_fig = None
+
         if product_type in ["Classic Autocall", "Step-Down Autocall"]:
 
             results = run_classic_backtest(
@@ -314,8 +317,15 @@ if uploaded_file is not None:
 
         st.subheader("Backtest Results")
 
+        results_display = results.copy()
+
+        if "Payoff" in results_display.columns:
+            results_display["Payoff"] = results_display["Payoff"].map(
+                lambda x: f"{x:,.2f}"
+            )
+
         st.dataframe(
-            results,
+            results_display,
             use_container_width=True
         )
 
@@ -374,91 +384,75 @@ if uploaded_file is not None:
         # Autocall distribution
         # =========================
 
-        if total_autocalled > 0:
-            autocall_summary = (
-                results[results["Event"] == "Autocalled"]
-                .groupby("Observation Month")
-                .size()
-                .reset_index(name="Autocalled")
+        autocall_summary = (
+            results[results["Event"] == "Autocalled"]
+            .groupby("Observation Month")
+            .size()
+            .reset_index(name="Autocalled")
+        )
+
+        autocall_summary["Autocall Test"] = (
+                autocall_summary["Observation Month"]
+                .astype(int)
+                .astype(str)
+                + " Months"
+        )
+
+        autocall_summary["%"] = (
+                autocall_summary["Autocalled"]
+                / total_tested
+                * 100
+        ).round(2)
+
+        autocall_summary = autocall_summary[
+            ["Autocall Test", "Autocalled", "%"]
+        ]
+
+        autocall_missed = total_tested - total_autocalled
+
+        missed_row = pd.DataFrame([{
+            "Autocall Test": "Autocall Missed",
+            "Autocalled": autocall_missed,
+            "%": round(
+                autocall_missed / total_tested * 100,
+                2
             )
+        }])
 
-            autocall_summary["Autocall Test"] = (
-                    autocall_summary["Observation Month"]
-                    .astype(int)
-                    .astype(str)
-                    + " Months"
-            )
+        total_row = pd.DataFrame([{
+            "Autocall Test": "Total",
+            "Autocalled": total_tested,
+            "%": 100.00
+        }])
 
-            autocall_summary["%"] = (
-                    autocall_summary["Autocalled"]
-                    / total_autocalled
-                    * 100
-            ).round(2)
-
-            autocall_summary = autocall_summary[
-                ["Autocall Test", "Autocalled", "%"]
-            ]
-
-            total_row = pd.DataFrame([{
-                "Autocall Test": "Total",
-                "Autocalled": autocall_summary["Autocalled"].sum(),
-                "%": autocall_summary["%"].sum()
-            }])
-
-            autocall_summary = pd.concat(
-                [autocall_summary, total_row],
-                ignore_index=True
-            )
-
-            autocall_summary["%"] = (
-                    autocall_summary["%"]
-                    .round(2)
-                    .astype(str)
-                    + "%"
-            )
-
-            st.subheader("Autocall Distribution")
-
-            st.dataframe(
+        autocall_summary = pd.concat(
+            [
                 autocall_summary,
-                use_container_width=True
-            )
+                missed_row,
+                total_row
+            ],
+            ignore_index=True
+        )
 
-            autocall_fig = create_autocall_distribution_chart(
-                autocall_summary
-            )
+        autocall_summary["%"] = (
+                autocall_summary["%"]
+                .round(2)
+                .astype(str)
+                + "%"
+        )
 
-            st.pyplot(autocall_fig)
+        st.subheader("Autocall Distribution")
 
-            # =========================
-            # Excel Export
-            # =========================
+        st.dataframe(
+            autocall_summary,
+            use_container_width=True
+        )
 
-            excel_file = create_excel_export(
-                product_type=product_type,
-                tenor_years=tenor_years,
-                observation_frequency=observation_frequency,
-                first_call_month=first_call_month,
-                autocall_trigger=autocall_trigger,
-                step_down_size=step_down_size,
-                income_trigger=income_trigger,
-                memory_coupon=memory_coupon,
-                coupon_pa=coupon_pa,
-                capital_barrier=capital_barrier,
-                notional=notional,
-                date_column=date_column,
-                price_columns=price_columns,
-                results=results,
-                summary_stats=summary_stats,
-                autocall_summary=autocall_summary if total_autocalled > 0 else None
-            )
+        autocall_fig = create_autocall_distribution_chart(
+            autocall_summary
+        )
 
-            st.download_button(
-                label="📊 Download Excel Report",
-                data=excel_file,
-                file_name="autocall_backtest_results.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+        st.pyplot(autocall_fig)
 
         # =========================
         # Underlying performance chart
@@ -491,16 +485,50 @@ if uploaded_file is not None:
                         * 100
                 )
 
-            fig = create_underlying_performance_chart(
+            underlying_fig = create_underlying_performance_chart(
                 rebased_df,
                 date_column,
                 price_columns
             )
 
-            st.pyplot(fig)
+            st.pyplot(underlying_fig)
 
         else:
             st.warning("Please select at least one underlying.")
+
+    # =========================
+    # Excel Export
+    # =========================
+
+        excel_file = create_excel_export(
+            product_type=product_type,
+            tenor_years=tenor_years,
+            observation_frequency=observation_frequency,
+            first_call_month=first_call_month,
+            autocall_trigger=autocall_trigger,
+            step_down_size=step_down_size,
+            income_trigger=income_trigger,
+            memory_coupon=memory_coupon,
+            coupon_pa=coupon_pa,
+            capital_barrier=capital_barrier,
+            notional=notional,
+            date_column=date_column,
+            price_columns=price_columns,
+            results=results,
+            summary_stats=summary_stats,
+            autocall_summary=autocall_summary,
+            underlying_performance_fig=underlying_fig,
+            autocall_distribution_fig=autocall_fig
+        )
+
+        st.download_button(
+                label="📊 Download Excel Report",
+                data=excel_file,
+                file_name="autocall_backtest_results.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+
 
         st.write("Selected inputs:")
 
