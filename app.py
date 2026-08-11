@@ -47,13 +47,13 @@ product_type = st.sidebar.selectbox(
     key="product_type"
 )
 
-tenor_years = st.sidebar.number_input(
-    "Tenor (years)",
+tenor_months = st.sidebar.number_input(
+    "Tenor (months)",
     min_value=1,
-    max_value=10,
-    value=6,
+    max_value=120,
+    value=72,
     step=1,
-    key="tenor_years"
+    key="tenor_months"
 )
 
 observation_frequency = st.sidebar.selectbox(
@@ -65,8 +65,8 @@ observation_frequency = st.sidebar.selectbox(
 first_call_month = st.sidebar.number_input(
     "First Call (months)",
     min_value=1,
-    max_value=60,
-    value=12,
+    max_value=tenor_months,
+    value=min(12, tenor_months),
     step=1,
     key="first_call_month"
 )
@@ -190,7 +190,7 @@ if uploaded_file is not None:
 
     summary_data = [
         {"Parameter": "Product Type", "Value": product_type},
-        {"Parameter": "Tenor", "Value": f"{tenor_years} years"},
+        {"Parameter": "Tenor", "Value": f"{tenor_months} months"},
         {"Parameter": "Observation Frequency", "Value": observation_frequency},
         {"Parameter": "First Call", "Value": f"{first_call_month} months"},
         {"Parameter": "Autocall Trigger", "Value": f"{autocall_trigger}%"},
@@ -236,8 +236,11 @@ if uploaded_file is not None:
             step_months = 1
 
         observation_months = list(
-            range(first_call_month, tenor_years * 12 + 1, step_months)
+            range(first_call_month, tenor_months + 1, step_months)
         )
+
+        if tenor_months not in observation_months:
+            observation_months.append(tenor_months)
 
         stepdown_schedule = []
 
@@ -281,7 +284,7 @@ if uploaded_file is not None:
                 df=df,
                 date_column=date_column,
                 price_columns=price_columns,
-                tenor_years=tenor_years,
+                tenor_months=tenor_months,
                 observation_frequency=observation_frequency,
                 first_call_month=first_call_month,
                 autocall_trigger=autocall_trigger,
@@ -298,7 +301,7 @@ if uploaded_file is not None:
                 df=df,
                 date_column=date_column,
                 price_columns=price_columns,
-                tenor_years=tenor_years,
+                tenor_months=tenor_months,
                 observation_frequency=observation_frequency,
                 first_call_month=first_call_month,
                 autocall_trigger=autocall_trigger,
@@ -502,7 +505,7 @@ if uploaded_file is not None:
 
         excel_file = create_excel_export(
             product_type=product_type,
-            tenor_years=tenor_years,
+            tenor_months=tenor_months,
             observation_frequency=observation_frequency,
             first_call_month=first_call_month,
             autocall_trigger=autocall_trigger,
@@ -534,7 +537,7 @@ if uploaded_file is not None:
 
         st.json({
             "product_type": product_type,
-            "tenor_years": tenor_years,
+            "tenor_months": tenor_months,
             "observation_frequency": observation_frequency,
             "first_call_month": first_call_month,
             "autocall_trigger": autocall_trigger,
