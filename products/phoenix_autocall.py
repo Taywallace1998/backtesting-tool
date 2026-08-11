@@ -257,7 +257,13 @@ def run_backtest(
             "Reason": "Please select at least one underlying column."
         }])
 
-    df[date_column] = pd.to_datetime(df[date_column])
+    df[date_column] = pd.to_datetime(
+        df[date_column],
+        format="mixed",
+        dayfirst=True,
+        errors="coerce"
+    )
+
     df = df.sort_values(date_column)
     df = df.dropna(subset=[date_column] + price_columns)
 
