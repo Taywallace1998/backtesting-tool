@@ -466,7 +466,10 @@ if uploaded_file is not None:
         chart_df = df.copy()
 
         chart_df[date_column] = pd.to_datetime(
-            chart_df[date_column]
+            chart_df[date_column],
+            format="mixed",
+            dayfirst=True,
+            errors="coerce"
         )
 
         chart_df = chart_df.sort_values(date_column)
