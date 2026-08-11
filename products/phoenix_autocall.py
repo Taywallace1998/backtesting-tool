@@ -6,7 +6,7 @@ def run_single_backtest(
     date_column,
     price_columns,
     trade_date,
-    tenor_years,
+    tenor_months,
     observation_frequency,
     first_call_month,
     autocall_trigger,
@@ -20,6 +20,9 @@ def run_single_backtest(
 ):
     df = df.copy()
     trade_date = pd.to_datetime(trade_date)
+
+    if first_call_month > tenor_months:
+        return None
 
     initial_row = df[df[date_column] >= trade_date].iloc[0]
     actual_trade_date = initial_row[date_column]
@@ -36,10 +39,13 @@ def run_single_backtest(
         step_months = 1
 
     coupon_observation_months = list(
-        range(step_months, tenor_years * 12 + 1, step_months)
+        range(step_months, tenor_months + 1, step_months)
     )
 
-    maturity_date = actual_trade_date + pd.DateOffset(years=tenor_years)
+    if tenor_months not in coupon_observation_months:
+        coupon_observation_months.append(tenor_months)
+
+    maturity_date = actual_trade_date + pd.DateOffset(months=tenor_months)
 
     if maturity_date > df[date_column].max():
         return None
@@ -71,13 +77,21 @@ def run_single_backtest(
 
         coupon_for_period = coupon_pa * (step_months / 12)
 
-        if product_type == "Step-Down Phoenix Autocall":
-            observation_number = coupon_observation_months.index(month)
+        if product_type == "Step-Down Phoenix Autocall" and can_autocall:
+
+            autocall_observation_number = (
+                sum(
+                    1
+                    for obs_month in coupon_observation_months
+                    if first_call_month <= obs_month < month
+                )
+            )
 
             current_autocall_trigger = (
-                autocall_trigger
-                - step_down_size * observation_number
+                    autocall_trigger
+                    - step_down_size * autocall_observation_number
             )
+
         else:
             current_autocall_trigger = autocall_trigger
 
@@ -146,9 +160,12 @@ def run_single_backtest(
                 coupon_paid / coupon_for_period
             )
 
+
         else:
 
             coupon_paid = 0
+
+            last_coupon_paid = 0
 
             if memory_coupon == "Yes":
                 missed_coupon_bank += coupon_for_period
@@ -182,7 +199,7 @@ def run_single_backtest(
     final_return = (payoff / notional - 1) * 100
 
     annualised_return = (
-                                ((1 + final_return / 100) ** (1 / tenor_years)) - 1
+                                ((1 + final_return / 100) ** (12 / tenor_months)) - 1
                         ) * 100
 
     coupon_opportunities_until_exit = len(coupon_observation_months)
@@ -191,8 +208,8 @@ def run_single_backtest(
     return {
         "Trade Date": actual_trade_date.date(),
         "Final Observation Date": maturity_actual_date.date(),
-        "Observation Month": tenor_years * 12,
-        "Observation Year": tenor_years,
+        "Observation Month": tenor_months,
+        "Observation Year": round(tenor_months / 12,2),
         "Autocall Trigger Used (%)": autocall_trigger,
         "Income Trigger (%)": income_trigger,
         "Worst Underlying": worst_underlying,
@@ -220,7 +237,7 @@ def run_backtest(
     df,
     date_column,
     price_columns,
-    tenor_years,
+    tenor_months,
     observation_frequency,
     first_call_month,
     autocall_trigger,
@@ -249,7 +266,7 @@ def run_backtest(
     max_date = df[date_column].max()
 
     for rolling_trade_date in df[date_column]:
-        maturity_date = rolling_trade_date + pd.DateOffset(years=tenor_years)
+        maturity_date = rolling_trade_date + pd.DateOffset(months=tenor_months)
 
         if maturity_date > max_date:
             break
@@ -259,7 +276,7 @@ def run_backtest(
             date_column=date_column,
             price_columns=price_columns,
             trade_date=rolling_trade_date,
-            tenor_years=tenor_years,
+            tenor_months=tenor_months,
             observation_frequency=observation_frequency,
             first_call_month=first_call_month,
             autocall_trigger=autocall_trigger,
