@@ -5,7 +5,7 @@ from openpyxl.drawing.image import Image
 
 def create_excel_export(
     product_type,
-    tenor_years,
+    tenor_months,
     observation_frequency,
     first_call_month,
     autocall_trigger,
@@ -28,7 +28,7 @@ def create_excel_export(
     inputs_df = pd.DataFrame({
         "Input": [
             "Product Type",
-            "Tenor Years",
+            "Tenor months",
             "Observation Frequency",
             "First Call Month",
             "Autocall Trigger (%)",
@@ -43,7 +43,7 @@ def create_excel_export(
         ],
         "Value": [
             product_type,
-            tenor_years,
+            tenor_months,
             observation_frequency,
             first_call_month,
             autocall_trigger,
