@@ -6,7 +6,7 @@ def run_single_backtest(
     date_column,
     price_columns,
     trade_date,
-    tenor_years,
+    tenor_months,
     observation_frequency,
     first_call_month,
     autocall_trigger,
@@ -18,6 +18,9 @@ def run_single_backtest(
 ):
     df = df.copy()
     trade_date = pd.to_datetime(trade_date)
+
+    if first_call_month > tenor_months:
+        return None
 
     initial_row = df[df[date_column] >= trade_date].iloc[0]
     actual_trade_date = initial_row[date_column]
@@ -34,10 +37,12 @@ def run_single_backtest(
         step_months = 1
 
     observation_months = list(
-        range(first_call_month, tenor_years * 12 + 1, step_months)
+        range(first_call_month, tenor_months + 1, step_months)
     )
+    if tenor_months not in observation_months:
+        observation_months.append(tenor_months)
 
-    maturity_date = actual_trade_date + pd.DateOffset(years=tenor_years)
+    maturity_date = actual_trade_date + pd.DateOffset(months=tenor_months)
 
     if maturity_date > df[date_column].max():
         return None
@@ -123,14 +128,14 @@ def run_single_backtest(
         final_return = (payoff / notional - 1) * 100
 
     annualised_return = (
-                                ((1 + final_return / 100) ** (1 / tenor_years)) - 1
+                                ((1 + final_return / 100) ** (12 / tenor_months)) - 1
                         ) * 100
 
     return {
         "Trade Date": actual_trade_date.date(),
         "Final Observation Date": maturity_actual_date.date(),
-        "Observation Month": tenor_years * 12,
-        "Observation Year": tenor_years,
+        "Observation Month": tenor_months,
+        "Observation Year": round (tenor_months / 12, 2),
         "Worst Underlying": worst_underlying,
         "Worst Initial Level": round(worst_initial_level, 2),
         "Worst Final Level": round(worst_final_level, 2),
@@ -146,7 +151,7 @@ def run_backtest(
     df,
     date_column,
     price_columns,
-    tenor_years,
+    tenor_months,
     observation_frequency,
     first_call_month,
     autocall_trigger,
@@ -173,7 +178,7 @@ def run_backtest(
     max_date = df[date_column].max()
 
     for rolling_trade_date in df[date_column]:
-        maturity_date = rolling_trade_date + pd.DateOffset(years=tenor_years)
+        maturity_date = rolling_trade_date + pd.DateOffset(months=tenor_months)
 
         if maturity_date > max_date:
             break
@@ -183,7 +188,7 @@ def run_backtest(
             date_column=date_column,
             price_columns=price_columns,
             trade_date=rolling_trade_date,
-            tenor_years=tenor_years,
+            tenor_months=tenor_months,
             observation_frequency=observation_frequency,
             first_call_month=first_call_month,
             autocall_trigger=autocall_trigger,
