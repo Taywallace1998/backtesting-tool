@@ -6,6 +6,11 @@ from products.phoenix_autocall import run_backtest as run_phoenix_backtest
 from charts import create_underlying_performance_chart, create_autocall_distribution_chart
 from excel_export import create_excel_export
 
+st.set_page_config(
+    page_title="Autocall Backtesting Tool",
+    layout="wide"
+)
+
 autocall_summary = None
 if "results" not in st.session_state:
     st.session_state["results"] = None
@@ -16,11 +21,6 @@ if "summary_stats" not in st.session_state:
 if "autocall_summary" not in st.session_state:
     st.session_state["autocall_summary"] = None
 
-
-st.set_page_config(
-    page_title="Autocall Backtesting Tool",
-    layout="wide"
-)
 
 st.title("Autocall Backtesting Tool")
 
