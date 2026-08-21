@@ -129,13 +129,7 @@ capital_barrier = st.sidebar.number_input(
     key="capital_barrier"
 )
 
-notional = st.sidebar.number_input(
-    "Notional",
-    min_value=1.0,
-    value=1000.0,
-    step=100.0,
-    key="notional"
-)
+notional = 100.0
 
 # =========================
 # File upload
@@ -196,7 +190,6 @@ if uploaded_file is not None:
         {"Parameter": "Autocall Trigger", "Value": f"{autocall_trigger}%"},
         {"Parameter": "Coupon p.a.", "Value": f"{coupon_pa}%"},
         {"Parameter": "Capital Barrier", "Value": f"{capital_barrier}%"},
-        {"Parameter": "Notional", "Value": f"{notional:,.0f}"}
     ]
 
     if product_type in ["Step-Down Autocall", "Step-Down Phoenix Autocall"]:
@@ -350,13 +343,23 @@ if uploaded_file is not None:
                 results["Event"] == "Matured, Barrier Breached"
         ).sum()
 
+        average_flat_coupon_return = (
+            results["Flat Coupon Return p.a. (%)"].mean()
+        )
+
+        average_annualised_return = (
+            results["Annualised Return (%)"].mean()
+        )
+
         summary_stats = pd.DataFrame({
             "Outcome": [
                 "Total Tested",
                 "Total Autocalled",
                 "Returned Capital",
                 "Lost Capital",
-                "Check Total"
+                "Check Total",
+                "Average Flat Coupon Return p.a.",
+                "Average Annualised Return"
             ],
             "Number": [
                 total_tested,
@@ -365,14 +368,18 @@ if uploaded_file is not None:
                 total_lost_capital,
                 total_autocalled
                 + total_returned_capital
-                + total_lost_capital
+                + total_lost_capital,
+                None,
+                None
             ],
             "Percentage": [
                 "100.00%",
                 f"{total_autocalled / total_tested * 100:.2f}%",
                 f"{total_returned_capital / total_tested * 100:.2f}%",
                 f"{total_lost_capital / total_tested * 100:.2f}%",
-                "100.00%"
+                "100.00%",
+                f"{average_flat_coupon_return:.2f}%",
+                f"{average_annualised_return:.2f}%"
             ]
         })
 
@@ -549,7 +556,6 @@ if uploaded_file is not None:
             "memory_coupon": memory_coupon,
             "coupon_pa": coupon_pa,
             "capital_barrier": capital_barrier,
-            "notional": notional,
             "date_column": date_column,
             "price_columns": price_columns
         })
