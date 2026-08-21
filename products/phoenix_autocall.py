@@ -79,17 +79,15 @@ def run_single_backtest(
 
         if product_type == "Step-Down Phoenix Autocall" and can_autocall:
 
-            autocall_observation_number = (
-                sum(
-                    1
-                    for obs_month in coupon_observation_months
-                    if first_call_month <= obs_month < month
-                )
+            autocall_observation_number = sum(
+                1
+                for obs_month in coupon_observation_months
+                if first_call_month <= obs_month < month
             )
 
             current_autocall_trigger = (
-                    autocall_trigger
-                    - step_down_size * autocall_observation_number
+                autocall_trigger
+                - step_down_size * autocall_observation_number
             )
 
         else:
@@ -105,18 +103,30 @@ def run_single_backtest(
 
             total_coupon_paid_life += coupon_paid
             last_coupon_paid = coupon_paid
+
             coupons_paid_count += round(
                 coupon_paid / coupon_for_period
             )
 
-            payoff = notional * (1 + total_coupon_paid_life / 100)
+            payoff = notional * (
+                1 + total_coupon_paid_life / 100
+            )
 
             annualised_return = (
-                                        ((1 + total_coupon_paid_life / 100) ** (1 / (month / 12))) - 1
-                                ) * 100
+                (
+                    (1 + total_coupon_paid_life / 100)
+                    ** (1 / (month / 12))
+                ) - 1
+            ) * 100
+
+            observation_year = month / 12
+
+            flat_coupon_return_pa = (
+                (payoff - 100) / observation_year
+            )
 
             coupon_opportunities_until_exit = (
-                    coupon_observation_months.index(month) + 1
+                coupon_observation_months.index(month) + 1
             )
 
             return {
@@ -124,47 +134,87 @@ def run_single_backtest(
                 "Final Observation Date": obs_date.date(),
                 "Observation Month": month,
                 "Observation Year": round(month / 12, 2),
-                "Autocall Trigger Used (%)": round(current_autocall_trigger, 2),
+                "Autocall Trigger Used (%)": round(
+                    current_autocall_trigger,
+                    2
+                ),
                 "Income Trigger (%)": income_trigger,
                 "Worst Underlying": worst_underlying,
-                "Worst Initial Level": round(worst_initial_level, 2),
-                "Worst Final Level": round(worst_final_level, 2),
-                "Worst Performance (%)": round((worst_performance - 1) * 100, 2),
-                "Event": "Autocalled",
-                "Coupon Paid This Observation (%)": round(coupon_paid, 2),
-                "Missed Coupon Bank (%)": round(missed_coupon_bank, 2),
-                "Coupon Paid on Final Observation (%)": round(coupon_paid, 2),
-                "Total Coupons Paid (%)": round(total_coupon_paid_life, 2),
-                "Coupons Paid": coupons_paid_count,
-                "Coupon Opportunities Until Exit": coupon_opportunities_until_exit,
-                "Coupon Capture Rate (%)": round(
-                coupons_paid_count / coupon_opportunities_until_exit * 100,
-                2
+                "Worst Initial Level": round(
+                    worst_initial_level,
+                    2
                 ),
-                "Return (%)": round(total_coupon_paid_life, 2),
-                "Annualised Return (%)": round(annualised_return, 2),
-                "Payoff": round(payoff, 2)
+                "Worst Final Level": round(
+                    worst_final_level,
+                    2
+                ),
+                "Worst Performance (%)": round(
+                    (worst_performance - 1) * 100,
+                    2
+                ),
+                "Event": "Autocalled",
+                "Coupon Paid This Observation (%)": round(
+                    coupon_paid,
+                    2
+                ),
+                "Missed Coupon Bank (%)": round(
+                    missed_coupon_bank,
+                    2
+                ),
+                "Coupon Paid on Final Observation (%)": round(
+                    coupon_paid,
+                    2
+                ),
+                "Total Coupons Paid (%)": round(
+                    total_coupon_paid_life,
+                    2
+                ),
+                "Coupons Paid": coupons_paid_count,
+                "Coupon Opportunities Until Exit": (
+                    coupon_opportunities_until_exit
+                ),
+                "Coupon Capture Rate (%)": round(
+                    coupons_paid_count
+                    / coupon_opportunities_until_exit
+                    * 100,
+                    2
+                ),
+                "Return (%)": round(
+                    total_coupon_paid_life,
+                    2
+                ),
+                "Payoff": round(payoff, 2),
+                "Flat Coupon Return p.a. (%)": round(
+                    flat_coupon_return_pa,
+                    2
+                ),
+                "Annualised Return (%)": round(
+                    annualised_return,
+                    2
+                )
             }
 
         elif worst_performance >= income_trigger / 100:
 
             if memory_coupon == "Yes":
-                coupon_paid = coupon_for_period + missed_coupon_bank
+                coupon_paid = (
+                    coupon_for_period
+                    + missed_coupon_bank
+                )
                 missed_coupon_bank = 0
             else:
                 coupon_paid = coupon_for_period
 
             total_coupon_paid_life += coupon_paid
             last_coupon_paid = coupon_paid
+
             coupons_paid_count += round(
                 coupon_paid / coupon_for_period
             )
 
-
         else:
 
             coupon_paid = 0
-
             last_coupon_paid = 0
 
             if memory_coupon == "Yes":
@@ -186,50 +236,101 @@ def run_single_backtest(
     worst_initial_level = initial_levels[worst_underlying]
     worst_final_level = final_levels[worst_underlying]
 
-
     if worst_final_performance >= capital_barrier / 100:
         final_event = "Matured, Capital Protected"
         capital_payoff = notional
     else:
         final_event = "Matured, Barrier Breached"
-        capital_payoff = notional * worst_final_performance
+        capital_payoff = (
+            notional * worst_final_performance
+        )
 
-    payoff = capital_payoff + (notional * total_coupon_paid_life / 100)
+    payoff = (
+        capital_payoff
+        + notional * total_coupon_paid_life / 100
+    )
 
-    final_return = (payoff / notional - 1) * 100
+    final_return = (
+        payoff / notional - 1
+    ) * 100
 
     annualised_return = (
-                                ((1 + final_return / 100) ** (12 / tenor_months)) - 1
-                        ) * 100
+        (
+            (1 + final_return / 100)
+            ** (12 / tenor_months)
+        ) - 1
+    ) * 100
 
-    coupon_opportunities_until_exit = len(coupon_observation_months)
+    observation_year = tenor_months / 12
 
+    flat_coupon_return_pa = (
+        (payoff - 100) / observation_year
+    )
+
+    coupon_opportunities_until_exit = len(
+        coupon_observation_months
+    )
 
     return {
         "Trade Date": actual_trade_date.date(),
         "Final Observation Date": maturity_actual_date.date(),
         "Observation Month": tenor_months,
-        "Observation Year": round(tenor_months / 12,2),
+        "Observation Year": round(
+            tenor_months / 12,
+            2
+        ),
         "Autocall Trigger Used (%)": autocall_trigger,
         "Income Trigger (%)": income_trigger,
         "Worst Underlying": worst_underlying,
-        "Worst Initial Level": round(worst_initial_level, 2),
-        "Worst Final Level": round(worst_final_level, 2),
-        "Worst Performance (%)": round((worst_final_performance - 1) * 100, 2),
+        "Worst Initial Level": round(
+            worst_initial_level,
+            2
+        ),
+        "Worst Final Level": round(
+            worst_final_level,
+            2
+        ),
+        "Worst Performance (%)": round(
+            (worst_final_performance - 1) * 100,
+            2
+        ),
         "Event": final_event,
-        "Coupon Paid This Observation (%)": round(last_coupon_paid, 2),
-        "Missed Coupon Bank (%)": round(missed_coupon_bank, 2),
-        "Coupon Paid on Final Observation (%)": round(last_coupon_paid, 2),
-        "Total Coupons Paid (%)": round(total_coupon_paid_life, 2),
+        "Coupon Paid This Observation (%)": round(
+            last_coupon_paid,
+            2
+        ),
+        "Missed Coupon Bank (%)": round(
+            missed_coupon_bank,
+            2
+        ),
+        "Coupon Paid on Final Observation (%)": round(
+            last_coupon_paid,
+            2
+        ),
+        "Total Coupons Paid (%)": round(
+            total_coupon_paid_life,
+            2
+        ),
         "Coupons Paid": coupons_paid_count,
-        "Coupon Opportunities Until Exit": coupon_opportunities_until_exit,
+        "Coupon Opportunities Until Exit": (
+            coupon_opportunities_until_exit
+        ),
         "Coupon Capture Rate (%)": round(
-            coupons_paid_count / coupon_opportunities_until_exit * 100,
+            coupons_paid_count
+            / coupon_opportunities_until_exit
+            * 100,
             2
         ),
         "Return (%)": round(final_return, 2),
-        "Annualised Return (%)": round(annualised_return, 2),
-        "Payoff": round(payoff, 2)
+        "Payoff": round(payoff, 2),
+        "Flat Coupon Return p.a. (%)": round(
+            flat_coupon_return_pa,
+            2
+        ),
+        "Annualised Return (%)": round(
+            annualised_return,
+            2
+        )
     }
 
 
@@ -254,7 +355,10 @@ def run_backtest(
     if not price_columns:
         return pd.DataFrame([{
             "Event": "No underlyings selected",
-            "Reason": "Please select at least one underlying column."
+            "Reason": (
+                "Please select at least one "
+                "underlying column."
+            )
         }])
 
     df[date_column] = pd.to_datetime(
@@ -265,14 +369,20 @@ def run_backtest(
     )
 
     df = df.sort_values(date_column)
-    df = df.dropna(subset=[date_column] + price_columns)
+
+    df = df.dropna(
+        subset=[date_column] + price_columns
+    )
 
     results = []
 
     max_date = df[date_column].max()
 
     for rolling_trade_date in df[date_column]:
-        maturity_date = rolling_trade_date + pd.DateOffset(months=tenor_months)
+        maturity_date = (
+            rolling_trade_date
+            + pd.DateOffset(months=tenor_months)
+        )
 
         if maturity_date > max_date:
             break
@@ -301,7 +411,10 @@ def run_backtest(
     if not results:
         return pd.DataFrame([{
             "Event": "No valid backtests",
-            "Reason": "There is not enough future data for the selected tenor."
+            "Reason": (
+                "There is not enough future data "
+                "for the selected tenor."
+            )
         }])
 
     return pd.DataFrame(results)
