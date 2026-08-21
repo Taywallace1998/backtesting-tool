@@ -17,16 +17,34 @@ def create_underlying_performance_chart(
         "#70ad47"
     ]
 
+    plot_df = rebased_df.copy()
+
+    for col in price_columns:
+        plot_df[col] = plot_df[col] - 100
+
     for i, col in enumerate(price_columns):
         ax.plot(
-            rebased_df[date_column],
-            rebased_df[col] - 100,
+            plot_df[date_column],
+            plot_df[col],
             label=col,
             linewidth=1.0,
             color=colours[i % len(colours)]
         )
 
-    ax.set_ylim(-50, 200)
+    y_min = plot_df[price_columns].min().min()
+    y_max = plot_df[price_columns].max().max()
+
+    y_range = y_max - y_min
+
+    padding = max(
+        y_range * 0.10,
+        5
+    )
+
+    ax.set_ylim(
+        y_min - padding,
+        y_max + padding
+    )
 
     ax.yaxis.set_major_formatter(
         plt.FuncFormatter(lambda y, _: f"{y:.0f}%")
@@ -78,6 +96,7 @@ def create_underlying_performance_chart(
     fig.tight_layout()
 
     return fig
+
 
 def create_autocall_distribution_chart(autocall_summary):
     fig, ax = plt.subplots(figsize=(10, 5))
