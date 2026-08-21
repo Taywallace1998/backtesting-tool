@@ -39,6 +39,7 @@ def run_single_backtest(
     observation_months = list(
         range(first_call_month, tenor_months + 1, step_months)
     )
+
     if tenor_months not in observation_months:
         observation_months.append(tenor_months)
 
@@ -83,8 +84,14 @@ def run_single_backtest(
             payoff = notional * (1 + coupon_return / 100)
 
             annualised_return = (
-                                        ((1 + coupon_return / 100) ** (1 / (month / 12))) - 1
-                                ) * 100
+                ((1 + coupon_return / 100) ** (1 / (month / 12))) - 1
+            ) * 100
+
+            observation_year = month / 12
+
+            flat_coupon_return_pa = (
+                (payoff - 100) / observation_year
+            )
 
             return {
                 "Trade Date": actual_trade_date.date(),
@@ -98,8 +105,9 @@ def run_single_backtest(
                 "Worst Performance (%)": round((worst_performance - 1) * 100, 2),
                 "Event": "Autocalled",
                 "Return (%)": round(coupon_return, 2),
+                "Payoff": round(payoff, 2),
+                "Flat Coupon Return p.a. (%)": round(flat_coupon_return_pa, 2),
                 "Annualised Return (%)": round(annualised_return, 2),
-                "Payoff": round(payoff, 2)
             }
 
     maturity_rows = df[df[date_column] >= maturity_date]
@@ -128,22 +136,29 @@ def run_single_backtest(
         final_return = (payoff / notional - 1) * 100
 
     annualised_return = (
-                                ((1 + final_return / 100) ** (12 / tenor_months)) - 1
-                        ) * 100
+        ((1 + final_return / 100) ** (12 / tenor_months)) - 1
+    ) * 100
+
+    observation_year = tenor_months / 12
+
+    flat_coupon_return_pa = (
+        (payoff - 100) / observation_year
+    )
 
     return {
         "Trade Date": actual_trade_date.date(),
         "Final Observation Date": maturity_actual_date.date(),
         "Observation Month": tenor_months,
-        "Observation Year": round (tenor_months / 12, 2),
+        "Observation Year": round(tenor_months / 12, 2),
         "Worst Underlying": worst_underlying,
         "Worst Initial Level": round(worst_initial_level, 2),
         "Worst Final Level": round(worst_final_level, 2),
         "Worst Performance (%)": round((worst_final_performance - 1) * 100, 2),
         "Event": final_event,
         "Return (%)": round(final_return, 2),
+        "Payoff": round(payoff, 2),
+        "Flat Coupon Return p.a. (%)": round(flat_coupon_return_pa, 2),
         "Annualised Return (%)": round(annualised_return, 2),
-        "Payoff": round(payoff, 2)
     }
 
 
@@ -184,7 +199,9 @@ def run_backtest(
     max_date = df[date_column].max()
 
     for rolling_trade_date in df[date_column]:
-        maturity_date = rolling_trade_date + pd.DateOffset(months=tenor_months)
+        maturity_date = rolling_trade_date + pd.DateOffset(
+            months=tenor_months
+        )
 
         if maturity_date > max_date:
             break
