@@ -530,8 +530,7 @@ if uploaded_file is not None:
             results=results,
             summary_stats=summary_stats,
             autocall_summary=autocall_summary,
-            underlying_performance_fig=underlying_fig,
-            autocall_distribution_fig=autocall_fig
+            underlying_performance_data=rebased_df
         )
 
         st.download_button(
