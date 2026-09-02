@@ -155,6 +155,7 @@ if product_type != "Participation":
 
     # Participation variables not used
     participation_rate = None
+    participation_strike = None
     protection_type = None
     protection_level = None
     upside_cap = None
@@ -173,6 +174,15 @@ else:
         value=150.0,
         step=5.0,
         key="participation_rate"
+    )
+
+    participation_strike = st.sidebar.number_input(
+        "Participation Strike (%)",
+        min_value=0.0,
+        max_value=200.0,
+        value=100.0,
+        step=1.0,
+        key="participation_strike"
     )
 
     protection_type = st.sidebar.selectbox(
@@ -291,25 +301,32 @@ if uploaded_file is not None:
             },
             {
                 "Parameter": "Participation Rate",
-                "Value": f"{participation_rate}%"
+                "Value": f"{participation_rate:.2f}%"
+            },
+            {
+                "Parameter": "Participation Strike",
+                "Value": f"{participation_strike:.2f}%"
             },
             {
                 "Parameter": "Protection Type",
                 "Value": protection_type
-            },
-            {
-                "Parameter": "Protection Level",
-                "Value": f"{protection_level}%"
-            },
-            {
-                "Parameter": "Upside Cap",
-                "Value": (
-                    f"{upside_cap}"
-                    if upside_cap is not None
-                    else "None"
-                )
             }
         ]
+
+        if protection_type != "100% Protected":
+            summary_data.append({
+                "Parameter": "Protection Level",
+                "Value": f"{protection_level:.2f}%"
+            })
+
+        summary_data.append({
+            "Parameter": "Upside Cap",
+            "Value": (
+                f"{upside_cap:.2f}%"
+                if upside_cap is not None
+                else "None"
+            )
+        })
 
     else:
 
@@ -446,6 +463,13 @@ if uploaded_file is not None:
 
     if run_backtest_button:
 
+        if not price_columns:
+            st.warning(
+                "Please select at least one underlying "
+                "before running the backtest."
+            )
+            st.stop()
+
         autocall_fig = None
         underlying_fig = None
         autocall_summary = None
@@ -512,6 +536,7 @@ if uploaded_file is not None:
                 price_columns=price_columns,
                 tenor_months=tenor_months,
                 participation_rate=participation_rate,
+                participation_strike=participation_strike,
                 protection_type=protection_type,
                 protection_level=protection_level,
                 upside_cap=upside_cap
@@ -640,45 +665,123 @@ if uploaded_file is not None:
                 ].mean()
             )
 
-            summary_stats = pd.DataFrame({
-                "Outcome": [
-                    "Total Tested",
-                    "Total Autocalled",
-                    "Returned Capital",
-                    "Lost Capital",
-                    "Check Total",
-                    "Average Flat Coupon Return p.a.",
-                    "Average Annualised Return"
-                ],
-                "Number": [
-                    total_tested,
-                    total_autocalled,
-                    total_returned_capital,
-                    total_lost_capital,
-                    (
-                        total_autocalled
-                        + total_returned_capital
-                        + total_lost_capital
-                    ),
-                    None,
-                    None
-                ],
-                "Percentage": [
-                    "100.00%",
-                    (
-                        f"{total_autocalled / total_tested * 100:.2f}%"
-                    ),
-                    (
-                        f"{total_returned_capital / total_tested * 100:.2f}%"
-                    ),
-                    (
-                        f"{total_lost_capital / total_tested * 100:.2f}%"
-                    ),
-                    "100.00%",
-                    f"{average_flat_coupon_return:.2f}%",
-                    f"{average_annualised_return:.2f}%"
-                ]
-            })
+            # =========================
+            # Phoenix income statistics
+            # =========================
+
+            if product_type in [
+                "Phoenix Autocall",
+                "Step-Down Phoenix Autocall"
+            ]:
+
+                total_income_payments_paid = int(
+                    results[
+                        "Coupons Paid"
+                    ].sum()
+                )
+
+                total_income_opportunities = int(
+                    results[
+                        "Coupon Opportunities Until Exit"
+                    ].sum()
+                )
+
+                total_income_payments_missed = (
+                    total_income_opportunities
+                    - total_income_payments_paid
+                )
+
+                summary_stats = pd.DataFrame({
+                    "Outcome": [
+                        "Total Tested",
+                        "Total Autocalled",
+                        "Returned Capital",
+                        "Lost Capital",
+                        "Check Total",
+                        "Total Income Payments Paid",
+                        "Total Income Payments Missed",
+                        "Average Flat Coupon Return p.a.",
+                        "Average Annualised Return"
+                    ],
+                    "Number": [
+                        total_tested,
+                        total_autocalled,
+                        total_returned_capital,
+                        total_lost_capital,
+                        (
+                            total_autocalled
+                            + total_returned_capital
+                            + total_lost_capital
+                        ),
+                        total_income_payments_paid,
+                        total_income_payments_missed,
+                        None,
+                        None
+                    ],
+                    "Percentage": [
+                        "100.00%",
+                        (
+                            f"{total_autocalled / total_tested * 100:.2f}%"
+                        ),
+                        (
+                            f"{total_returned_capital / total_tested * 100:.2f}%"
+                        ),
+                        (
+                            f"{total_lost_capital / total_tested * 100:.2f}%"
+                        ),
+                        "100.00%",
+                        "",
+                        "",
+                        f"{average_flat_coupon_return:.2f}%",
+                        f"{average_annualised_return:.2f}%"
+                    ]
+                })
+
+            else:
+
+                summary_stats = pd.DataFrame({
+                    "Outcome": [
+                        "Total Tested",
+                        "Total Autocalled",
+                        "Returned Capital",
+                        "Lost Capital",
+                        "Check Total",
+                        "Average Flat Coupon Return p.a.",
+                        "Average Annualised Return"
+                    ],
+                    "Number": [
+                        total_tested,
+                        total_autocalled,
+                        total_returned_capital,
+                        total_lost_capital,
+                        (
+                            total_autocalled
+                            + total_returned_capital
+                            + total_lost_capital
+                        ),
+                        None,
+                        None
+                    ],
+                    "Percentage": [
+                        "100.00%",
+                        (
+                            f"{total_autocalled / total_tested * 100:.2f}%"
+                        ),
+                        (
+                            f"{total_returned_capital / total_tested * 100:.2f}%"
+                        ),
+                        (
+                            f"{total_lost_capital / total_tested * 100:.2f}%"
+                        ),
+                        "100.00%",
+                        f"{average_flat_coupon_return:.2f}%",
+                        f"{average_annualised_return:.2f}%"
+                    ]
+                })
+
+        # =========================
+        # Display Backtest Summary
+        # =========================
 
         st.subheader("Backtest Summary")
 
@@ -815,35 +918,28 @@ if uploaded_file is not None:
             ] + price_columns
         )
 
-        if len(price_columns) > 0:
+        rebased_df = chart_df[
+            [date_column] + price_columns
+        ].copy()
 
-            rebased_df = chart_df[
-                [date_column] + price_columns
-            ].copy()
-
-            for col in price_columns:
-                rebased_df[col] = (
-                    rebased_df[col]
-                    / rebased_df[col].iloc[0]
-                    * 100
-                )
-
-            underlying_fig = (
-                create_underlying_performance_chart(
-                    rebased_df,
-                    date_column,
-                    price_columns
-                )
+        for col in price_columns:
+            rebased_df[col] = (
+                rebased_df[col]
+                / rebased_df[col].iloc[0]
+                * 100
             )
 
-            st.pyplot(
-                underlying_fig
+        underlying_fig = (
+            create_underlying_performance_chart(
+                rebased_df,
+                date_column,
+                price_columns
             )
+        )
 
-        else:
-            st.warning(
-                "Please select at least one underlying."
-            )
+        st.pyplot(
+            underlying_fig
+        )
 
         # =========================
         # Excel Export
@@ -866,13 +962,42 @@ if uploaded_file is not None:
             results=results,
             summary_stats=summary_stats,
             autocall_summary=autocall_summary,
-            underlying_performance_data=rebased_df
+            underlying_performance_data=rebased_df,
+            participation_rate=participation_rate,
+            participation_strike=participation_strike,
+            protection_type=protection_type,
+            protection_level=protection_level,
+            upside_cap=upside_cap
+        )
+
+        # =========================
+        # Excel file name
+        # =========================
+
+        product_name = (
+            product_type
+            .replace(" ", "_")
+            .replace("-", "_")
+        )
+
+        ticker_name = "_".join(
+            str(col)
+            .replace(" ", "_")
+            .replace("/", "_")
+            .replace("\\", "_")
+            for col in price_columns
+        )
+
+        excel_file_name = (
+            f"{product_name}_{ticker_name}_{tenor_months}M.xlsx"
+            if ticker_name
+            else f"{product_name}_{tenor_months}M.xlsx"
         )
 
         st.download_button(
             label="📊 Download Excel Report",
             data=excel_file,
-            file_name="backtest_results.xlsx",
+            file_name=excel_file_name,
             mime=(
                 "application/vnd.openxmlformats-officedocument."
                 "spreadsheetml.sheet"
@@ -898,6 +1023,7 @@ if uploaded_file is not None:
 
             selected_inputs.update({
                 "participation_rate": participation_rate,
+                "participation_strike": participation_strike,
                 "protection_type": protection_type,
                 "protection_level": protection_level,
                 "upside_cap": upside_cap
