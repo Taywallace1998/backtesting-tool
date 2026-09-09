@@ -72,11 +72,38 @@ notional = 100.0
 
 if product_type != "Participation":
 
-    observation_frequency = st.sidebar.selectbox(
-        "Observation Frequency",
-        ["Annual", "Semi-Annual", "Quarterly", "Monthly"],
-        key="observation_frequency"
-    )
+    if product_type in [
+        "Phoenix Autocall",
+        "Step-Down Phoenix Autocall"
+    ]:
+
+        income_frequency = st.sidebar.selectbox(
+            "Income Frequency",
+            ["Annual", "Semi-Annual", "Quarterly", "Monthly"],
+            index=2,
+            key="income_frequency"
+        )
+
+        autocall_frequency = st.sidebar.selectbox(
+            "Autocall Frequency",
+            ["Annual", "Semi-Annual", "Quarterly", "Monthly"],
+            index=1,
+            key="autocall_frequency"
+        )
+
+        # Retained for current Excel export compatibility.
+        observation_frequency = autocall_frequency
+
+    else:
+
+        observation_frequency = st.sidebar.selectbox(
+            "Observation Frequency",
+            ["Annual", "Semi-Annual", "Quarterly", "Monthly"],
+            key="observation_frequency"
+        )
+
+        income_frequency = None
+        autocall_frequency = None
 
     first_call_month = st.sidebar.number_input(
         "First Call (months)",
@@ -228,6 +255,8 @@ else:
 
     # Autocall variables not used
     observation_frequency = None
+    income_frequency = None
+    autocall_frequency = None
     first_call_month = None
     autocall_trigger = None
     step_down_size = 0.0
@@ -338,11 +367,33 @@ if uploaded_file is not None:
             {
                 "Parameter": "Tenor",
                 "Value": f"{tenor_months} months"
-            },
-            {
+            }
+        ]
+
+        if product_type in [
+            "Phoenix Autocall",
+            "Step-Down Phoenix Autocall"
+        ]:
+
+            summary_data.extend([
+                {
+                    "Parameter": "Income Frequency",
+                    "Value": income_frequency
+                },
+                {
+                    "Parameter": "Autocall Frequency",
+                    "Value": autocall_frequency
+                }
+            ])
+
+        else:
+
+            summary_data.append({
                 "Parameter": "Observation Frequency",
                 "Value": observation_frequency
-            },
+            })
+
+        summary_data.extend([
             {
                 "Parameter": "First Call",
                 "Value": f"{first_call_month} months"
@@ -359,7 +410,7 @@ if uploaded_file is not None:
                 "Parameter": "Capital Barrier",
                 "Value": f"{capital_barrier}%"
             }
-        ]
+        ])
 
         if product_type in [
             "Step-Down Autocall",
@@ -397,11 +448,16 @@ if uploaded_file is not None:
         "Step-Down Phoenix Autocall"
     ]:
 
-        if observation_frequency == "Annual":
+        if product_type == "Step-Down Phoenix Autocall":
+            schedule_frequency = autocall_frequency
+        else:
+            schedule_frequency = observation_frequency
+
+        if schedule_frequency == "Annual":
             step_months = 12
-        elif observation_frequency == "Semi-Annual":
+        elif schedule_frequency == "Semi-Annual":
             step_months = 6
-        elif observation_frequency == "Quarterly":
+        elif schedule_frequency == "Quarterly":
             step_months = 3
         else:
             step_months = 1
@@ -512,7 +568,8 @@ if uploaded_file is not None:
                 date_column=date_column,
                 price_columns=price_columns,
                 tenor_months=tenor_months,
-                observation_frequency=observation_frequency,
+                income_frequency=income_frequency,
+                autocall_frequency=autocall_frequency,
                 first_call_month=first_call_month,
                 autocall_trigger=autocall_trigger,
                 income_trigger=income_trigger,
@@ -967,7 +1024,9 @@ if uploaded_file is not None:
             participation_strike=participation_strike,
             protection_type=protection_type,
             protection_level=protection_level,
-            upside_cap=upside_cap
+            upside_cap=upside_cap,
+            income_frequency=income_frequency,
+            autocall_frequency=autocall_frequency
         )
 
         # =========================
@@ -1031,16 +1090,35 @@ if uploaded_file is not None:
 
         else:
 
-            selected_inputs.update({
-                "observation_frequency": observation_frequency,
-                "first_call_month": first_call_month,
-                "autocall_trigger": autocall_trigger,
-                "step_down_size": step_down_size,
-                "income_trigger": income_trigger,
-                "memory_coupon": memory_coupon,
-                "coupon_pa": coupon_pa,
-                "capital_barrier": capital_barrier
-            })
+            if product_type in [
+                "Phoenix Autocall",
+                "Step-Down Phoenix Autocall"
+            ]:
+
+                selected_inputs.update({
+                    "income_frequency": income_frequency,
+                    "autocall_frequency": autocall_frequency,
+                    "first_call_month": first_call_month,
+                    "autocall_trigger": autocall_trigger,
+                    "step_down_size": step_down_size,
+                    "income_trigger": income_trigger,
+                    "memory_coupon": memory_coupon,
+                    "coupon_pa": coupon_pa,
+                    "capital_barrier": capital_barrier
+                })
+
+            else:
+
+                selected_inputs.update({
+                    "observation_frequency": observation_frequency,
+                    "first_call_month": first_call_month,
+                    "autocall_trigger": autocall_trigger,
+                    "step_down_size": step_down_size,
+                    "income_trigger": income_trigger,
+                    "memory_coupon": memory_coupon,
+                    "coupon_pa": coupon_pa,
+                    "capital_barrier": capital_barrier
+                })
 
         st.json(
             selected_inputs
