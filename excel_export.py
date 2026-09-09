@@ -35,7 +35,9 @@ def create_excel_export(
     participation_strike=None,
     protection_type=None,
     protection_level=None,
-    upside_cap=None
+    upside_cap=None,
+    income_frequency=None,
+    autocall_frequency=None
 ):
     output = BytesIO()
 
@@ -74,13 +76,17 @@ def create_excel_export(
             ]
         })
 
-    else:
+    elif product_type in [
+        "Phoenix Autocall",
+        "Step-Down Phoenix Autocall"
+    ]:
 
         inputs_df = pd.DataFrame({
             "Input": [
                 "Product Type",
                 "Tenor months",
-                "Observation Frequency",
+                "Income Frequency",
+                "Autocall Frequency",
                 "First Call Month",
                 "Autocall Trigger (%)",
                 "Step-Down Size (%)",
@@ -94,12 +100,42 @@ def create_excel_export(
             "Value": [
                 product_type,
                 tenor_months,
-                observation_frequency,
+                income_frequency,
+                autocall_frequency,
                 first_call_month,
                 autocall_trigger,
                 step_down_size,
                 income_trigger,
                 memory_coupon,
+                coupon_pa,
+                capital_barrier,
+                date_column,
+                ", ".join(price_columns)
+            ]
+        })
+
+    else:
+
+        inputs_df = pd.DataFrame({
+            "Input": [
+                "Product Type",
+                "Tenor months",
+                "Observation Frequency",
+                "First Call Month",
+                "Autocall Trigger (%)",
+                "Step-Down Size (%)",
+                "Coupon p.a. (%)",
+                "Capital Barrier (%)",
+                "Date Column",
+                "Underlying Columns"
+            ],
+            "Value": [
+                product_type,
+                tenor_months,
+                observation_frequency,
+                first_call_month,
+                autocall_trigger,
+                step_down_size,
                 coupon_pa,
                 capital_barrier,
                 date_column,
