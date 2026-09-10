@@ -748,12 +748,42 @@ if uploaded_file is not None:
                     - total_income_payments_paid
                 )
 
+                returned_full_capital = (
+                    total_autocalled
+                    + total_returned_capital
+                )
+
+                returned_full_capital_percentage = (
+                    returned_full_capital
+                    / total_tested
+                    * 100
+                    if total_tested
+                    else 0
+                )
+
+                coupon_paid_percentage = (
+                    total_income_payments_paid
+                    / total_income_opportunities
+                    * 100
+                    if total_income_opportunities
+                    else 0
+                )
+
+                coupon_missed_percentage = (
+                    total_income_payments_missed
+                    / total_income_opportunities
+                    * 100
+                    if total_income_opportunities
+                    else 0
+                )
+
                 summary_stats = pd.DataFrame({
                     "Outcome": [
                         "Total Tested",
                         "Total Autocalled",
                         "Returned Capital",
                         "Lost Capital",
+                        "Returned Full Capital",
                         "Check Total",
                         "Total Income Payments Paid",
                         "Total Income Payments Missed",
@@ -765,6 +795,7 @@ if uploaded_file is not None:
                         total_autocalled,
                         total_returned_capital,
                         total_lost_capital,
+                        returned_full_capital,
                         (
                             total_autocalled
                             + total_returned_capital
@@ -786,15 +817,41 @@ if uploaded_file is not None:
                         (
                             f"{total_lost_capital / total_tested * 100:.2f}%"
                         ),
+                        f"{returned_full_capital_percentage:.2f}%",
                         "100.00%",
-                        "",
-                        "",
+                        f"{coupon_paid_percentage:.2f}%",
+                        f"{coupon_missed_percentage:.2f}%",
                         f"{average_flat_coupon_return:.2f}%",
                         f"{average_annualised_return:.2f}%"
+                    ],
+                    "Factsheet Headings": [
+                        "Total Number Tested",
+                        "% matured Early",
+                        "% to reach Final Date",
+                        "% barrier breach",
+                        "% returned full capital",
+                        "",
+                        "% coupons paid",
+                        "% coupons missed",
+                        "Average Historic Return",
+                        ""
                     ]
                 })
 
             else:
+
+                returned_full_capital = (
+                    total_autocalled
+                    + total_returned_capital
+                )
+
+                returned_full_capital_percentage = (
+                    returned_full_capital
+                    / total_tested
+                    * 100
+                    if total_tested
+                    else 0
+                )
 
                 summary_stats = pd.DataFrame({
                     "Outcome": [
@@ -802,6 +859,7 @@ if uploaded_file is not None:
                         "Total Autocalled",
                         "Returned Capital",
                         "Lost Capital",
+                        "Returned Full Capital",
                         "Check Total",
                         "Average Flat Coupon Return p.a.",
                         "Average Annualised Return"
@@ -811,6 +869,7 @@ if uploaded_file is not None:
                         total_autocalled,
                         total_returned_capital,
                         total_lost_capital,
+                        returned_full_capital,
                         (
                             total_autocalled
                             + total_returned_capital
@@ -830,9 +889,20 @@ if uploaded_file is not None:
                         (
                             f"{total_lost_capital / total_tested * 100:.2f}%"
                         ),
+                        f"{returned_full_capital_percentage:.2f}%",
                         "100.00%",
                         f"{average_flat_coupon_return:.2f}%",
                         f"{average_annualised_return:.2f}%"
+                    ],
+                    "Factsheet Headings": [
+                        "Total Number Tested",
+                        "% matured Early",
+                        "% to reach Final Date",
+                        "% barrier breach",
+                        "% returned full capital",
+                        "",
+                        "Average Historic Return",
+                        ""
                     ]
                 })
 
