@@ -10,7 +10,39 @@ from openpyxl.styles import (
     Side
 )
 from openpyxl.chart.label import DataLabelList
+from openpyxl.chart.shapes import GraphicalProperties
+from openpyxl.chart.text import RichText
+from openpyxl.drawing.line import LineProperties
+from openpyxl.drawing.text import (
+    CharacterProperties,
+    Paragraph,
+    ParagraphProperties,
+    Font as DrawingFont
+)
 from openpyxl.utils import get_column_letter
+
+
+def chart_text_properties(
+    typeface="Montserrat",
+    size=800
+):
+    character_properties = CharacterProperties(
+        latin=DrawingFont(
+            typeface=typeface
+        ),
+        sz=size
+    )
+
+    return RichText(
+        p=[
+            Paragraph(
+                pPr=ParagraphProperties(
+                    defRPr=character_properties
+                ),
+                endParaRPr=character_properties
+            )
+        ]
+    )
 
 
 def create_excel_export(
@@ -689,8 +721,48 @@ def create_excel_export(
                     "Autocall Back-Test"
                 )
 
+                if (
+                    autocall_chart.title is not None
+                    and autocall_chart.title.tx is not None
+                    and autocall_chart.title.tx.rich is not None
+                ):
+                    for paragraph in autocall_chart.title.tx.rich.p:
+                        if paragraph.pPr is None:
+                            paragraph.pPr = ParagraphProperties()
+
+                        paragraph.pPr.defRPr = CharacterProperties(
+                            latin=DrawingFont(
+                                typeface="Montserrat"
+                            ),
+                            sz=800
+                        )
+
+                        for run in paragraph.r:
+                            run.rPr = CharacterProperties(
+                                latin=DrawingFont(
+                                    typeface="Montserrat"
+                                ),
+                                sz=800
+                            )
+
                 autocall_chart.height = 12
                 autocall_chart.width = 24
+
+                # Rounded Excel chart border
+                autocall_chart.roundedCorners = True
+
+                # Chart and plot area background
+                autocall_chart.graphical_properties = (
+                    GraphicalProperties(
+                        solidFill="E7E7E2"
+                    )
+                )
+
+                autocall_chart.plot_area.spPr = (
+                    GraphicalProperties(
+                        solidFill="E7E7E2"
+                    )
+                )
 
                 autocall_chart.legend = None
 
@@ -709,6 +781,28 @@ def create_excel_export(
                     .y_axis\
                     .scaling\
                     .min = 0
+
+                # Montserrat 8pt for axes
+                autocall_chart.x_axis.txPr = (
+                    chart_text_properties()
+                )
+
+                autocall_chart.y_axis.txPr = (
+                    chart_text_properties()
+                )
+
+                # Major gridlines:
+                # automatic colour, 0% transparency,
+                # 0.75 pt width, flat cap, round join
+                autocall_chart.y_axis.majorGridlines.spPr = (
+                    GraphicalProperties(
+                        ln=LineProperties(
+                            w=9525,
+                            cap="flat",
+                            round=True
+                        )
+                    )
+                )
 
                 data = Reference(
                     autocall_sheet,
@@ -739,12 +833,12 @@ def create_excel_export(
 
                 series\
                     .graphicalProperties\
-                    .solidFill = "2F75B5"
+                    .solidFill = "007FB9"
 
                 series\
                     .graphicalProperties\
                     .line\
-                    .solidFill = "2F75B5"
+                    .solidFill = "007FB9"
 
                 autocall_chart.gapWidth = 180
 
@@ -763,6 +857,10 @@ def create_excel_export(
                 autocall_chart\
                     .dLbls\
                     .position = "outEnd"
+
+                autocall_chart.dLbls.txPr = (
+                    chart_text_properties()
+                )
 
                 charts_sheet.add_chart(
                     autocall_chart,
@@ -799,9 +897,29 @@ def create_excel_export(
                 underlying_chart.height = 14
                 underlying_chart.width = 24
 
+                # Rounded Excel chart border
+                underlying_chart.roundedCorners = True
+
+                # White chart and plot area background
+                underlying_chart.graphical_properties = (
+                    GraphicalProperties(
+                        solidFill="FFFFFF"
+                    )
+                )
+
+                underlying_chart.plot_area.spPr = (
+                    GraphicalProperties(
+                        solidFill="FFFFFF"
+                    )
+                )
+
                 underlying_chart\
                     .legend\
                     .position = "t"
+
+                underlying_chart.legend.txPr = (
+                    chart_text_properties()
+                )
 
                 underlying_chart\
                     .y_axis\
@@ -811,9 +929,20 @@ def create_excel_export(
                     .x_axis\
                     .title = ""
 
+                # Performance data is stored as percentage points,
+                # so the percent sign must be literal rather than
+                # Excel multiplying the values by 100.
                 underlying_chart\
                     .y_axis\
                     .numFmt = '0"%"'
+
+                underlying_chart.x_axis.txPr = (
+                    chart_text_properties()
+                )
+
+                underlying_chart.y_axis.txPr = (
+                    chart_text_properties()
+                )
 
                 underlying_chart\
                     .y_axis\
