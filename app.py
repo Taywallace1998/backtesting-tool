@@ -201,14 +201,74 @@ if product_type != "Participation":
 
     elif product_type == "Step-Down Phoenix Autocall":
 
-        step_down_size = st.sidebar.number_input(
-            "Step-Down per Observation (%)",
-            min_value=0.0,
-            max_value=50.0,
-            value=5.0,
-            step=0.5,
-            key="step_down_size"
+        step_down_size = 0.0
+
+        if autocall_frequency == "Annual":
+            schedule_step_months = 12
+        elif autocall_frequency == "Semi-Annual":
+            schedule_step_months = 6
+        elif autocall_frequency == "Quarterly":
+            schedule_step_months = 3
+        else:
+            schedule_step_months = 1
+
+        # Final maturity is excluded because
+        # Phoenix cannot autocall at maturity.
+        stepdown_months = list(
+            range(
+                first_call_month,
+                tenor_months,
+                schedule_step_months
+            )
         )
+
+        default_schedule_df = pd.DataFrame({
+            "Observation": list(
+                range(
+                    1,
+                    len(stepdown_months) + 1
+                )
+            ),
+            "Month": stepdown_months,
+            "Autocall Trigger (%)": [
+                float(autocall_trigger)
+                for _ in stepdown_months
+            ]
+        })
+
+        st.sidebar.markdown(
+            "#### Autocall Trigger Schedule"
+        )
+
+        edited_schedule_df = st.sidebar.data_editor(
+            default_schedule_df,
+            hide_index=True,
+            disabled=[
+                "Observation",
+                "Month"
+            ],
+            column_config={
+                "Autocall Trigger (%)": (
+                    st.column_config.NumberColumn(
+                        "Autocall Trigger (%)",
+                        min_value=0.0,
+                        max_value=200.0,
+                        step=1.0,
+                        format="%.2f"
+                    )
+                )
+            },
+            key="phoenix_step_down_schedule_editor"
+        )
+
+        step_down_schedule = {
+            int(row["Month"]): float(
+                row["Autocall Trigger (%)"]
+            )
+            for _, row in (
+                edited_schedule_df.iterrows()
+            )
+        }
 
     else:
         step_down_size = 0.0
@@ -504,9 +564,16 @@ if uploaded_file is not None:
 
         elif product_type == "Step-Down Phoenix Autocall":
 
+            schedule_text = ", ".join(
+                f"{month}m: {trigger:.2f}%"
+                for month, trigger in (
+                    step_down_schedule.items()
+                )
+            )
+
             summary_data.append({
-                "Parameter": "Step-Down per Observation",
-                "Value": f"{step_down_size}%"
+                "Parameter": "Autocall Trigger Schedule",
+                "Value": schedule_text
             })
 
         if product_type in [
@@ -557,51 +624,20 @@ if uploaded_file is not None:
 
     elif product_type == "Step-Down Phoenix Autocall":
 
-        if autocall_frequency == "Annual":
-            step_months = 12
-        elif autocall_frequency == "Semi-Annual":
-            step_months = 6
-        elif autocall_frequency == "Quarterly":
-            step_months = 3
-        else:
-            step_months = 1
-
-        observation_months = list(
-            range(
-                first_call_month,
-                tenor_months + 1,
-                step_months
-            )
-        )
-
-        if tenor_months not in observation_months:
-            observation_months.append(
-                tenor_months
-            )
-
-        stepdown_schedule = []
-
-        for i, month in enumerate(
-            observation_months
-        ):
-
-            trigger = (
-                autocall_trigger
-                - step_down_size * i
-            )
-
-            stepdown_schedule.append({
-                "Observation": i + 1,
-                "Month": month,
-                "Autocall Trigger (%)": round(
-                    trigger,
-                    2
+        stepdown_schedule_df = pd.DataFrame({
+            "Observation": list(
+                range(
+                    1,
+                    len(step_down_schedule) + 1
                 )
-            })
-
-        stepdown_schedule_df = pd.DataFrame(
-            stepdown_schedule
-        )
+            ),
+            "Month": list(
+                step_down_schedule.keys()
+            ),
+            "Autocall Trigger (%)": list(
+                step_down_schedule.values()
+            )
+        })
 
         st.subheader("Step-Down Schedule")
 
@@ -683,7 +719,8 @@ if uploaded_file is not None:
                 capital_barrier=capital_barrier,
                 notional=notional,
                 step_down_size=step_down_size,
-                product_type=product_type
+                product_type=product_type,
+                step_down_schedule=step_down_schedule
             )
 
         # =========================
@@ -1291,6 +1328,7 @@ if uploaded_file is not None:
                     "first_call_month": first_call_month,
                     "autocall_trigger": autocall_trigger,
                     "step_down_size": step_down_size,
+                    "step_down_schedule": step_down_schedule,
                     "income_trigger": income_trigger,
                     "memory_coupon": memory_coupon,
                     "coupon_pa": coupon_pa,
