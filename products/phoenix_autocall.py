@@ -28,7 +28,8 @@ def run_single_backtest(
     memory_coupon,
     coupon_pa,
     capital_barrier,
-    notional
+    notional,
+    step_down_schedule=None
 ):
     df = df.copy()
 
@@ -300,11 +301,22 @@ def run_single_backtest(
                 == "Step-Down Phoenix Autocall"
             ):
 
-                current_autocall_trigger = (
-                    autocall_trigger
-                    - step_down_size
-                    * autocall_observation_number
-                )
+                if step_down_schedule:
+
+                    current_autocall_trigger = (
+                        step_down_schedule.get(
+                            month,
+                            autocall_trigger
+                        )
+                    )
+
+                else:
+
+                    current_autocall_trigger = (
+                        autocall_trigger
+                        - step_down_size
+                        * autocall_observation_number
+                    )
 
             else:
 
@@ -741,7 +753,8 @@ def run_backtest(
     capital_barrier,
     notional,
     step_down_size=0.0,
-    product_type="Phoenix Autocall"
+    product_type="Phoenix Autocall",
+    step_down_schedule=None
 ):
     df = df.copy()
 
@@ -810,7 +823,8 @@ def run_backtest(
             memory_coupon=memory_coupon,
             coupon_pa=coupon_pa,
             capital_barrier=capital_barrier,
-            notional=notional
+            notional=notional,
+            step_down_schedule=step_down_schedule
         )
 
         if result is not None:
