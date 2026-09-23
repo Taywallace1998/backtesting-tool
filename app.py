@@ -123,10 +123,84 @@ if product_type != "Participation":
         key="autocall_trigger"
     )
 
-    if product_type in [
-        "Step-Down Autocall",
-        "Step-Down Phoenix Autocall"
-    ]:
+    step_down_schedule = None
+
+    if product_type == "Step-Down Autocall":
+
+        step_down_size = 0.0
+
+        if observation_frequency == "Annual":
+            schedule_step_months = 12
+        elif observation_frequency == "Semi-Annual":
+            schedule_step_months = 6
+        elif observation_frequency == "Quarterly":
+            schedule_step_months = 3
+        else:
+            schedule_step_months = 1
+
+        stepdown_months = list(
+            range(
+                first_call_month,
+                tenor_months + 1,
+                schedule_step_months
+            )
+        )
+
+        if tenor_months not in stepdown_months:
+            stepdown_months.append(
+                tenor_months
+            )
+
+        default_schedule_df = pd.DataFrame({
+            "Observation": list(
+                range(
+                    1,
+                    len(stepdown_months) + 1
+                )
+            ),
+            "Month": stepdown_months,
+            "Autocall Trigger (%)": [
+                float(autocall_trigger)
+                for _ in stepdown_months
+            ]
+        })
+
+        st.sidebar.markdown(
+            "#### Autocall Trigger Schedule"
+        )
+
+        edited_schedule_df = st.sidebar.data_editor(
+            default_schedule_df,
+            hide_index=True,
+            disabled=[
+                "Observation",
+                "Month"
+            ],
+            column_config={
+                "Autocall Trigger (%)": (
+                    st.column_config.NumberColumn(
+                        "Autocall Trigger (%)",
+                        min_value=0.0,
+                        max_value=200.0,
+                        step=1.0,
+                        format="%.2f"
+                    )
+                )
+            },
+            key="step_down_schedule_editor"
+        )
+
+        step_down_schedule = {
+            int(row["Month"]): float(
+                row["Autocall Trigger (%)"]
+            )
+            for _, row in (
+                edited_schedule_df.iterrows()
+            )
+        }
+
+    elif product_type == "Step-Down Phoenix Autocall":
+
         step_down_size = st.sidebar.number_input(
             "Step-Down per Observation (%)",
             min_value=0.0,
@@ -135,6 +209,7 @@ if product_type != "Participation":
             step=0.5,
             key="step_down_size"
         )
+
     else:
         step_down_size = 0.0
 
@@ -260,6 +335,7 @@ else:
     first_call_month = None
     autocall_trigger = None
     step_down_size = 0.0
+    step_down_schedule = None
     income_trigger = None
     memory_coupon = "No"
     coupon_pa = None
@@ -412,10 +488,22 @@ if uploaded_file is not None:
             }
         ])
 
-        if product_type in [
-            "Step-Down Autocall",
-            "Step-Down Phoenix Autocall"
-        ]:
+        if product_type == "Step-Down Autocall":
+
+            schedule_text = ", ".join(
+                f"{month}m: {trigger:.2f}%"
+                for month, trigger in (
+                    step_down_schedule.items()
+                )
+            )
+
+            summary_data.append({
+                "Parameter": "Autocall Trigger Schedule",
+                "Value": schedule_text
+            })
+
+        elif product_type == "Step-Down Phoenix Autocall":
+
             summary_data.append({
                 "Parameter": "Step-Down per Observation",
                 "Value": f"{step_down_size}%"
@@ -443,21 +531,37 @@ if uploaded_file is not None:
     # Step-down schedule preview
     # =========================
 
-    if product_type in [
-        "Step-Down Autocall",
-        "Step-Down Phoenix Autocall"
-    ]:
+    if product_type == "Step-Down Autocall":
 
-        if product_type == "Step-Down Phoenix Autocall":
-            schedule_frequency = autocall_frequency
-        else:
-            schedule_frequency = observation_frequency
+        stepdown_schedule_df = pd.DataFrame({
+            "Observation": list(
+                range(
+                    1,
+                    len(step_down_schedule) + 1
+                )
+            ),
+            "Month": list(
+                step_down_schedule.keys()
+            ),
+            "Autocall Trigger (%)": list(
+                step_down_schedule.values()
+            )
+        })
 
-        if schedule_frequency == "Annual":
+        st.subheader("Step-Down Schedule")
+
+        st.dataframe(
+            stepdown_schedule_df,
+            use_container_width=True
+        )
+
+    elif product_type == "Step-Down Phoenix Autocall":
+
+        if autocall_frequency == "Annual":
             step_months = 12
-        elif schedule_frequency == "Semi-Annual":
+        elif autocall_frequency == "Semi-Annual":
             step_months = 6
-        elif schedule_frequency == "Quarterly":
+        elif autocall_frequency == "Quarterly":
             step_months = 3
         else:
             step_months = 1
@@ -550,6 +654,7 @@ if uploaded_file is not None:
                 step_down_size=step_down_size,
                 product_type=product_type,
                 coupon_pa=coupon_pa,
+                step_down_schedule=step_down_schedule,
                 capital_barrier=capital_barrier,
                 notional=notional
             )
@@ -1096,7 +1201,8 @@ if uploaded_file is not None:
             protection_level=protection_level,
             upside_cap=upside_cap,
             income_frequency=income_frequency,
-            autocall_frequency=autocall_frequency
+            autocall_frequency=autocall_frequency,
+            step_down_schedule=step_down_schedule
         )
 
         # =========================
@@ -1171,6 +1277,7 @@ if uploaded_file is not None:
                     "first_call_month": first_call_month,
                     "autocall_trigger": autocall_trigger,
                     "step_down_size": step_down_size,
+                    "step_down_schedule": step_down_schedule,
                     "income_trigger": income_trigger,
                     "memory_coupon": memory_coupon,
                     "coupon_pa": coupon_pa,
