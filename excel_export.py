@@ -69,7 +69,8 @@ def create_excel_export(
     protection_level=None,
     upside_cap=None,
     income_frequency=None,
-    autocall_frequency=None
+    autocall_frequency=None,
+    step_down_schedule=None
 ):
     output = BytesIO()
 
@@ -146,6 +147,43 @@ def create_excel_export(
             ]
         })
 
+    elif product_type == "Step-Down Autocall":
+
+        schedule_text = ""
+
+        if step_down_schedule:
+            schedule_text = "; ".join(
+                f"{int(month)}m: {float(trigger):.2f}%"
+                for month, trigger in (
+                    step_down_schedule.items()
+                )
+            )
+
+        inputs_df = pd.DataFrame({
+            "Input": [
+                "Product Type",
+                "Tenor months",
+                "Observation Frequency",
+                "First Call Month",
+                "Autocall Trigger Schedule",
+                "Coupon p.a. (%)",
+                "Capital Barrier (%)",
+                "Date Column",
+                "Underlying Columns"
+            ],
+            "Value": [
+                product_type,
+                tenor_months,
+                observation_frequency,
+                first_call_month,
+                schedule_text,
+                coupon_pa,
+                capital_barrier,
+                date_column,
+                ", ".join(price_columns)
+            ]
+        })
+
     else:
 
         inputs_df = pd.DataFrame({
@@ -155,7 +193,6 @@ def create_excel_export(
                 "Observation Frequency",
                 "First Call Month",
                 "Autocall Trigger (%)",
-                "Step-Down Size (%)",
                 "Coupon p.a. (%)",
                 "Capital Barrier (%)",
                 "Date Column",
@@ -167,7 +204,6 @@ def create_excel_export(
                 observation_frequency,
                 first_call_month,
                 autocall_trigger,
-                step_down_size,
                 coupon_pa,
                 capital_barrier,
                 date_column,
