@@ -14,7 +14,8 @@ def run_single_backtest(
     product_type,
     coupon_pa,
     capital_barrier,
-    notional
+    notional,
+    step_down_schedule=None
 ):
     df = df.copy()
     trade_date = pd.to_datetime(trade_date)
@@ -70,12 +71,29 @@ def run_single_backtest(
         coupon_return = coupon_pa * (month / 12)
 
         if product_type == "Step-Down Autocall":
-            observation_number = observation_months.index(month)
 
-            current_autocall_trigger = (
-                autocall_trigger
-                - step_down_size * observation_number
-            )
+            if step_down_schedule:
+
+                current_autocall_trigger = (
+                    step_down_schedule.get(
+                        month,
+                        autocall_trigger
+                    )
+                )
+
+            else:
+
+                observation_number = (
+                    observation_months.index(
+                        month
+                    )
+                )
+
+                current_autocall_trigger = (
+                    autocall_trigger
+                    - step_down_size
+                    * observation_number
+                )
 
         else:
             current_autocall_trigger = autocall_trigger
@@ -174,7 +192,8 @@ def run_backtest(
     product_type,
     coupon_pa,
     capital_barrier,
-    notional
+    notional,
+    step_down_schedule=None
 ):
     df = df.copy()
 
@@ -219,7 +238,8 @@ def run_backtest(
             product_type=product_type,
             coupon_pa=coupon_pa,
             capital_barrier=capital_barrier,
-            notional=notional
+            notional=notional,
+            step_down_schedule=step_down_schedule
         )
 
         if result is not None:
