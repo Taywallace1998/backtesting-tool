@@ -109,10 +109,50 @@ def create_excel_export(
             ]
         })
 
-    elif product_type in [
-        "Phoenix Autocall",
-        "Step-Down Phoenix Autocall"
-    ]:
+    elif product_type == "Step-Down Phoenix Autocall":
+
+        schedule_text = ""
+
+        if step_down_schedule:
+            schedule_text = "; ".join(
+                f"{int(month)}m: {float(trigger):.2f}%"
+                for month, trigger in (
+                    step_down_schedule.items()
+                )
+            )
+
+        inputs_df = pd.DataFrame({
+            "Input": [
+                "Product Type",
+                "Tenor months",
+                "Income Frequency",
+                "Autocall Frequency",
+                "First Call Month",
+                "Autocall Trigger Schedule",
+                "Income Trigger (%)",
+                "Memory Coupon",
+                "Coupon p.a. (%)",
+                "Capital Barrier (%)",
+                "Date Column",
+                "Underlying Columns"
+            ],
+            "Value": [
+                product_type,
+                tenor_months,
+                income_frequency,
+                autocall_frequency,
+                first_call_month,
+                schedule_text,
+                income_trigger,
+                memory_coupon,
+                coupon_pa,
+                capital_barrier,
+                date_column,
+                ", ".join(price_columns)
+            ]
+        })
+
+    elif product_type == "Phoenix Autocall":
 
         inputs_df = pd.DataFrame({
             "Input": [
@@ -122,7 +162,6 @@ def create_excel_export(
                 "Autocall Frequency",
                 "First Call Month",
                 "Autocall Trigger (%)",
-                "Step-Down Size (%)",
                 "Income Trigger (%)",
                 "Memory Coupon",
                 "Coupon p.a. (%)",
@@ -137,7 +176,6 @@ def create_excel_export(
                 autocall_frequency,
                 first_call_month,
                 autocall_trigger,
-                step_down_size,
                 income_trigger,
                 memory_coupon,
                 coupon_pa,
