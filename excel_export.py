@@ -78,7 +78,30 @@ def create_excel_export(
     # Inputs
     # =========================
 
-    if product_type == "Participation":
+    if product_type == "Fixed Income":
+
+        inputs_df = pd.DataFrame({
+            "Input": [
+                "Product Type",
+                "Tenor months",
+                "Income Frequency",
+                "Fixed Coupon p.a. (%)",
+                "European Capital Barrier (%)",
+                "Date Column",
+                "Underlying Columns"
+            ],
+            "Value": [
+                product_type,
+                tenor_months,
+                income_frequency,
+                coupon_pa,
+                capital_barrier,
+                date_column,
+                ", ".join(price_columns)
+            ]
+        })
+
+    elif product_type == "Participation":
 
         inputs_df = pd.DataFrame({
             "Input": [
@@ -538,6 +561,50 @@ def create_excel_export(
                 "Coupon Capture Rate (%)": (
                     "Coupons Paid divided by Coupon Opportunities Until "
                     "Exit."
+                ),
+
+                # Fixed Income
+                "Income Frequency": (
+                    "Frequency at which the unconditional fixed income "
+                    "payments are scheduled."
+                ),
+
+                "Fixed Coupon p.a. (%)": (
+                    "Annual fixed coupon rate paid irrespective of "
+                    "underlying performance."
+                ),
+
+                "Income Payments": (
+                    "Number of scheduled fixed income payments over "
+                    "the life of the simulated investment."
+                ),
+
+                "Regular Coupon (%)": (
+                    "Coupon paid at each full regular income period."
+                ),
+
+                "Final Stub Months": (
+                    "Number of months in the irregular final income "
+                    "period, where applicable."
+                ),
+
+                "Final Stub Coupon (%)": (
+                    "Prorated coupon paid for the irregular final "
+                    "income period, where applicable."
+                ),
+
+                "Total Income Paid (%)": (
+                    "Total fixed income paid over the full life of "
+                    "the simulated investment."
+                ),
+
+                "Capital Barrier (%)": (
+                    "European capital barrier tested only at maturity."
+                ),
+
+                "Capital Redemption": (
+                    "Capital amount returned at maturity before adding "
+                    "the fixed income payments."
                 ),
 
                 # Participation
