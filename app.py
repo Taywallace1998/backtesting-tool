@@ -4,6 +4,7 @@ import pandas as pd
 from products.classic_autocall import run_backtest as run_classic_backtest
 from products.phoenix_autocall import run_backtest as run_phoenix_backtest
 from products.participation import run_backtest as run_participation_backtest
+from products.fixed_income import run_backtest as run_fixed_income_backtest
 from charts import (
     create_underlying_performance_chart,
     create_autocall_distribution_chart
@@ -48,6 +49,7 @@ product_type = st.sidebar.selectbox(
         "Step-Down Autocall",
         "Phoenix Autocall",
         "Step-Down Phoenix Autocall",
+        "Fixed Income",
         "Participation"
     ],
     key="product_type"
@@ -67,10 +69,52 @@ notional = 100.0
 
 
 # =========================
-# Autocall / Phoenix inputs
+# Product inputs
 # =========================
 
-if product_type != "Participation":
+if product_type == "Fixed Income":
+
+    income_frequency = st.sidebar.selectbox(
+        "Income Frequency",
+        ["Annual", "Semi-Annual", "Quarterly", "Monthly"],
+        index=2,
+        key="fixed_income_frequency"
+    )
+
+    coupon_pa = st.sidebar.number_input(
+        "Fixed Coupon p.a. (%)",
+        min_value=0.0,
+        max_value=100.0,
+        value=5.0,
+        step=0.25,
+        key="fixed_income_coupon_pa"
+    )
+
+    capital_barrier = st.sidebar.number_input(
+        "European Capital Barrier (%)",
+        min_value=0.0,
+        max_value=100.0,
+        value=60.0,
+        step=1.0,
+        key="fixed_income_capital_barrier"
+    )
+
+    observation_frequency = None
+    autocall_frequency = None
+    first_call_month = None
+    autocall_trigger = None
+    step_down_size = 0.0
+    step_down_schedule = None
+    income_trigger = None
+    memory_coupon = "No"
+
+    participation_rate = None
+    participation_strike = None
+    protection_type = None
+    protection_level = None
+    upside_cap = None
+
+elif product_type != "Participation":
 
     if product_type in [
         "Phoenix Autocall",
@@ -453,7 +497,32 @@ if uploaded_file is not None:
 
     st.header("2. Product Summary")
 
-    if product_type == "Participation":
+    if product_type == "Fixed Income":
+
+        summary_data = [
+            {
+                "Parameter": "Product Type",
+                "Value": product_type
+            },
+            {
+                "Parameter": "Tenor",
+                "Value": f"{tenor_months} months"
+            },
+            {
+                "Parameter": "Income Frequency",
+                "Value": income_frequency
+            },
+            {
+                "Parameter": "Fixed Coupon p.a.",
+                "Value": f"{coupon_pa:.2f}%"
+            },
+            {
+                "Parameter": "European Capital Barrier",
+                "Value": f"{capital_barrier:.2f}%"
+            }
+        ]
+
+    elif product_type == "Participation":
 
         summary_data = [
             {
@@ -724,6 +793,23 @@ if uploaded_file is not None:
             )
 
         # =========================
+        # Fixed Income
+        # =========================
+
+        elif product_type == "Fixed Income":
+
+            results = run_fixed_income_backtest(
+                df=df,
+                date_column=date_column,
+                price_columns=price_columns,
+                tenor_months=tenor_months,
+                income_frequency=income_frequency,
+                coupon_pa=coupon_pa,
+                capital_barrier=capital_barrier,
+                notional=notional
+            )
+
+        # =========================
         # Participation
         # =========================
 
@@ -816,6 +902,89 @@ if uploaded_file is not None:
                 ],
                 "Percentage": [
                     "100.00%",
+                    (
+                        f"{positive_returns / total_tested * 100:.2f}%"
+                    ),
+                    (
+                        f"{flat_returns / total_tested * 100:.2f}%"
+                    ),
+                    (
+                        f"{negative_returns / total_tested * 100:.2f}%"
+                    ),
+                    f"{average_return:.2f}%",
+                    f"{average_annualised_return:.2f}%"
+                ]
+            })
+
+        # =========================
+        # Fixed Income Summary
+        # =========================
+
+        elif product_type == "Fixed Income":
+
+            total_tested = len(results)
+
+            returned_full_capital = (
+                results["Event"]
+                == "Matured, Capital Protected"
+            ).sum()
+
+            barrier_breached = (
+                results["Event"]
+                == "Matured, Barrier Breached"
+            ).sum()
+
+            positive_returns = (
+                results["Return (%)"] > 0
+            ).sum()
+
+            flat_returns = (
+                results["Return (%)"] == 0
+            ).sum()
+
+            negative_returns = (
+                results["Return (%)"] < 0
+            ).sum()
+
+            average_return = (
+                results["Return (%)"].mean()
+            )
+
+            average_annualised_return = (
+                results[
+                    "Annualised Return (%)"
+                ].mean()
+            )
+
+            summary_stats = pd.DataFrame({
+                "Outcome": [
+                    "Total Tested",
+                    "Returned Full Capital",
+                    "Barrier Breached",
+                    "Positive Overall Return",
+                    "Flat Overall Return",
+                    "Negative Overall Return",
+                    "Average Total Return",
+                    "Average Annualised Return"
+                ],
+                "Number": [
+                    total_tested,
+                    returned_full_capital,
+                    barrier_breached,
+                    positive_returns,
+                    flat_returns,
+                    negative_returns,
+                    None,
+                    None
+                ],
+                "Percentage": [
+                    "100.00%",
+                    (
+                        f"{returned_full_capital / total_tested * 100:.2f}%"
+                    ),
+                    (
+                        f"{barrier_breached / total_tested * 100:.2f}%"
+                    ),
                     (
                         f"{positive_returns / total_tested * 100:.2f}%"
                     ),
@@ -1063,7 +1232,10 @@ if uploaded_file is not None:
         # Autocall Distribution
         # =========================
 
-        if product_type != "Participation":
+        if product_type not in [
+            "Participation",
+            "Fixed Income"
+        ]:
 
             autocall_summary = (
                 results[
@@ -1291,7 +1463,15 @@ if uploaded_file is not None:
             "price_columns": price_columns
         }
 
-        if product_type == "Participation":
+        if product_type == "Fixed Income":
+
+            selected_inputs.update({
+                "income_frequency": income_frequency,
+                "coupon_pa": coupon_pa,
+                "capital_barrier": capital_barrier
+            })
+
+        elif product_type == "Participation":
 
             selected_inputs.update({
                 "participation_rate": participation_rate,
