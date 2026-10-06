@@ -891,44 +891,216 @@ if uploaded_file is not None:
                 ].mean()
             )
 
-            summary_stats = pd.DataFrame({
-                "Outcome": [
-                    "Total Tested",
-                    "Positive Return",
-                    "Flat Return",
-                    "Negative Return",
-                    "Average Return",
-                    "Average Annualised Return",
-                    "Max Return",
-                    "Min Return"
-                ],
-                "Number": [
-                    total_tested,
-                    positive_returns,
-                    flat_returns,
-                    negative_returns,
-                    None,
-                    None,
-                    None,
-                    None
-                ],
-                "Percentage": [
-                    "100.00%",
-                    (
+            above_participation_strike = (
+                results["Underlying Level (%)"]
+                > results["Participation Strike (%)"]
+            ).sum()
+
+            at_or_below_participation_strike = (
+                results["Underlying Level (%)"]
+                <= results["Participation Strike (%)"]
+            ).sum()
+
+            average_underlying_performance = (
+                results[
+                    "Underlying Performance (%)"
+                ].mean()
+            )
+
+            average_participation_return = (
+                results[
+                    "Participation Return (%)"
+                ].mean()
+            )
+
+            max_participation_return = (
+                results[
+                    "Participation Return (%)"
+                ].max()
+            )
+
+            min_participation_return = (
+                results[
+                    "Participation Return (%)"
+                ].min()
+            )
+
+            summary_rows = [
+                {
+                    "Outcome": "Total Tested",
+                    "Number": total_tested,
+                    "Percentage": "100.00%"
+                },
+                {
+                    "Outcome": "Positive Return",
+                    "Number": positive_returns,
+                    "Percentage": (
                         f"{positive_returns / total_tested * 100:.2f}%"
-                    ),
-                    (
+                    )
+                },
+                {
+                    "Outcome": "Flat Return",
+                    "Number": flat_returns,
+                    "Percentage": (
                         f"{flat_returns / total_tested * 100:.2f}%"
-                    ),
-                    (
+                    )
+                },
+                {
+                    "Outcome": "Negative Return",
+                    "Number": negative_returns,
+                    "Percentage": (
                         f"{negative_returns / total_tested * 100:.2f}%"
+                    )
+                },
+                {
+                    "Outcome": "Average Return",
+                    "Number": None,
+                    "Percentage": f"{average_return:.2f}%"
+                },
+                {
+                    "Outcome": "Average Annualised Return",
+                    "Number": None,
+                    "Percentage": (
+                        f"{average_annualised_return:.2f}%"
+                    )
+                },
+                {
+                    "Outcome": "Max Return",
+                    "Number": None,
+                    "Percentage": f"{max_return:.2f}%"
+                },
+                {
+                    "Outcome": "Min Return",
+                    "Number": None,
+                    "Percentage": f"{min_return:.2f}%"
+                },
+                {
+                    "Outcome": (
+                        "Underlying Above Participation Strike"
                     ),
-                    f"{average_return:.2f}%",
-                    f"{average_annualised_return:.2f}%",
-                    f"{max_return:.2f}%",
-                    f"{min_return:.2f}%"
-                ]
-            })
+                    "Number": above_participation_strike,
+                    "Percentage": (
+                        f"{above_participation_strike / total_tested * 100:.2f}%"
+                    )
+                },
+                {
+                    "Outcome": (
+                        "Underlying At/Below Participation Strike"
+                    ),
+                    "Number": at_or_below_participation_strike,
+                    "Percentage": (
+                        f"{at_or_below_participation_strike / total_tested * 100:.2f}%"
+                    )
+                },
+                {
+                    "Outcome": "Average Underlying Performance",
+                    "Number": None,
+                    "Percentage": (
+                        f"{average_underlying_performance:.2f}%"
+                    )
+                },
+                {
+                    "Outcome": "Average Participation Return",
+                    "Number": None,
+                    "Percentage": (
+                        f"{average_participation_return:.2f}%"
+                    )
+                },
+                {
+                    "Outcome": "Max Participation Return",
+                    "Number": None,
+                    "Percentage": (
+                        f"{max_participation_return:.2f}%"
+                    )
+                },
+                {
+                    "Outcome": "Min Participation Return",
+                    "Number": None,
+                    "Percentage": (
+                        f"{min_participation_return:.2f}%"
+                    )
+                }
+            ]
+
+            if upside_cap is not None:
+
+                cap_reached_count = (
+                    results["Cap Reached"] == "Yes"
+                ).sum()
+
+                summary_rows.append({
+                    "Outcome": "Cap Reached",
+                    "Number": cap_reached_count,
+                    "Percentage": (
+                        f"{cap_reached_count / total_tested * 100:.2f}%"
+                    )
+                })
+
+            if protection_type == "100% Protected":
+
+                capital_protected_count = (
+                    results["Event"]
+                    == "100% Capital Protected"
+                ).sum()
+
+                summary_rows.append({
+                    "Outcome": "100% Capital Protected",
+                    "Number": capital_protected_count,
+                    "Percentage": (
+                        f"{capital_protected_count / total_tested * 100:.2f}%"
+                    )
+                })
+
+            elif protection_type == "Partial Protected":
+
+                partial_protection_count = (
+                    results["Event"]
+                    == "Partial Protection Applied"
+                ).sum()
+
+                summary_rows.append({
+                    "Outcome": "Partial Protection Applied",
+                    "Number": partial_protection_count,
+                    "Percentage": (
+                        f"{partial_protection_count / total_tested * 100:.2f}%"
+                    )
+                })
+
+            elif (
+                protection_type
+                == "Partial Protected with Put Spread"
+            ):
+
+                put_spread_downside_count = (
+                    results["Event"]
+                    == "Put Spread Downside"
+                ).sum()
+
+                protection_floor_count = (
+                    results["Event"]
+                    == "Put Spread Floor Applied"
+                ).sum()
+
+                summary_rows.extend([
+                    {
+                        "Outcome": "Put Spread Downside",
+                        "Number": put_spread_downside_count,
+                        "Percentage": (
+                            f"{put_spread_downside_count / total_tested * 100:.2f}%"
+                        )
+                    },
+                    {
+                        "Outcome": "Protection Floor Applied",
+                        "Number": protection_floor_count,
+                        "Percentage": (
+                            f"{protection_floor_count / total_tested * 100:.2f}%"
+                        )
+                    }
+                ])
+
+            summary_stats = pd.DataFrame(
+                summary_rows
+            )
 
         # =========================
         # Fixed Income Summary
