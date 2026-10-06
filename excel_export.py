@@ -642,6 +642,16 @@ def create_excel_export(
                     "selected. None means the payoff is uncapped."
                 ),
 
+                "Uncapped Payoff": (
+                    "Participation payoff before applying any selected "
+                    "upside cap."
+                ),
+
+                "Cap Reached": (
+                    "Yes where the uncapped payoff exceeded the selected "
+                    "upside cap, meaning the cap limited the final payoff."
+                ),
+
                 # Return calculations
                 "Return (%)": (
                     "Total investment return calculated as Payoff minus "
