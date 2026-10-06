@@ -181,10 +181,17 @@ def run_single_backtest(
     # Optional upside cap
     # =========================
 
+    uncapped_payoff = payoff
+
+    cap_reached = (
+        upside_cap is not None
+        and uncapped_payoff > upside_cap
+    )
+
     if upside_cap is not None:
 
         payoff = min(
-            payoff,
+            uncapped_payoff,
             upside_cap
         )
 
@@ -240,6 +247,17 @@ def run_single_backtest(
             upside_cap
             if upside_cap is not None
             else "None"
+        ),
+
+        "Uncapped Payoff": round(
+            uncapped_payoff,
+            2
+        ),
+
+        "Cap Reached": (
+            "Yes"
+            if cap_reached
+            else "No"
         ),
 
         "Worst Underlying": worst_underlying,
