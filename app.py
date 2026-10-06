@@ -853,6 +853,14 @@ if uploaded_file is not None:
             use_container_width=True
         )
 
+        max_return = (
+            results["Return (%)"].max()
+        )
+
+        min_return = (
+            results["Return (%)"].min()
+        )
+
         # =========================
         # Participation Summary
         # =========================
@@ -890,13 +898,17 @@ if uploaded_file is not None:
                     "Flat Return",
                     "Negative Return",
                     "Average Return",
-                    "Average Annualised Return"
+                    "Average Annualised Return",
+                    "Max Return",
+                    "Min Return"
                 ],
                 "Number": [
                     total_tested,
                     positive_returns,
                     flat_returns,
                     negative_returns,
+                    None,
+                    None,
                     None,
                     None
                 ],
@@ -912,7 +924,9 @@ if uploaded_file is not None:
                         f"{negative_returns / total_tested * 100:.2f}%"
                     ),
                     f"{average_return:.2f}%",
-                    f"{average_annualised_return:.2f}%"
+                    f"{average_annualised_return:.2f}%",
+                    f"{max_return:.2f}%",
+                    f"{min_return:.2f}%"
                 ]
             })
 
@@ -965,7 +979,9 @@ if uploaded_file is not None:
                     "Flat Overall Return",
                     "Negative Overall Return",
                     "Average Total Return",
-                    "Average Annualised Return"
+                    "Average Annualised Return",
+                    "Max Return",
+                    "Min Return"
                 ],
                 "Number": [
                     total_tested,
@@ -974,6 +990,8 @@ if uploaded_file is not None:
                     positive_returns,
                     flat_returns,
                     negative_returns,
+                    None,
+                    None,
                     None,
                     None
                 ],
@@ -995,7 +1013,9 @@ if uploaded_file is not None:
                         f"{negative_returns / total_tested * 100:.2f}%"
                     ),
                     f"{average_return:.2f}%",
-                    f"{average_annualised_return:.2f}%"
+                    f"{average_annualised_return:.2f}%",
+                    f"{max_return:.2f}%",
+                    f"{min_return:.2f}%"
                 ]
             })
 
@@ -1099,7 +1119,9 @@ if uploaded_file is not None:
                         "Total Income Payments Paid",
                         "Total Income Payments Missed",
                         "Average Flat Coupon Return p.a.",
-                        "Average Annualised Return"
+                        "Average Annualised Return",
+                        "Max Return",
+                        "Min Return"
                     ],
                     "Number": [
                         total_tested,
@@ -1114,6 +1136,8 @@ if uploaded_file is not None:
                         ),
                         total_income_payments_paid,
                         total_income_payments_missed,
+                        None,
+                        None,
                         None,
                         None
                     ],
@@ -1133,7 +1157,9 @@ if uploaded_file is not None:
                         f"{coupon_paid_percentage:.2f}%",
                         f"{coupon_missed_percentage:.2f}%",
                         f"{average_flat_coupon_return:.2f}%",
-                        f"{average_annualised_return:.2f}%"
+                        f"{average_annualised_return:.2f}%",
+                        f"{max_return:.2f}%",
+                        f"{min_return:.2f}%"
                     ],
                     "Factsheet Headings": [
                         "Total Number Tested",
@@ -1145,6 +1171,8 @@ if uploaded_file is not None:
                         "% coupons paid",
                         "% coupons missed",
                         "Average Historic Return",
+                        "",
+                        "",
                         ""
                     ]
                 })
@@ -1173,7 +1201,9 @@ if uploaded_file is not None:
                         "Returned Full Capital",
                         "Check Total",
                         "Average Flat Coupon Return p.a.",
-                        "Average Annualised Return"
+                        "Average Annualised Return",
+                        "Max Return",
+                        "Min Return"
                     ],
                     "Number": [
                         total_tested,
@@ -1186,6 +1216,8 @@ if uploaded_file is not None:
                             + total_returned_capital
                             + total_lost_capital
                         ),
+                        None,
+                        None,
                         None,
                         None
                     ],
@@ -1203,7 +1235,9 @@ if uploaded_file is not None:
                         f"{returned_full_capital_percentage:.2f}%",
                         "100.00%",
                         f"{average_flat_coupon_return:.2f}%",
-                        f"{average_annualised_return:.2f}%"
+                        f"{average_annualised_return:.2f}%",
+                        f"{max_return:.2f}%",
+                        f"{min_return:.2f}%"
                     ],
                     "Factsheet Headings": [
                         "Total Number Tested",
@@ -1213,6 +1247,8 @@ if uploaded_file is not None:
                         "% returned full capital",
                         "",
                         "Average Historic Return",
+                        "",
+                        "",
                         ""
                     ]
                 })
