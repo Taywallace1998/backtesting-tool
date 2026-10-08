@@ -87,6 +87,7 @@ if product_type == "Fixed Income":
         max_value=100.0,
         value=5.0,
         step=0.25,
+        format="%.2f",
         key="fixed_income_coupon_pa"
     )
 
@@ -95,7 +96,8 @@ if product_type == "Fixed Income":
         min_value=0.0,
         max_value=100.0,
         value=60.0,
-        step=1.0,
+        step=0.25,
+        format="%.2f",
         key="fixed_income_capital_barrier"
     )
 
@@ -163,7 +165,8 @@ elif product_type != "Participation":
         min_value=0.0,
         max_value=200.0,
         value=100.0,
-        step=1.0,
+        step=0.25,
+        format="%.2f",
         key="autocall_trigger"
     )
 
@@ -226,7 +229,7 @@ elif product_type != "Participation":
                         "Autocall Trigger (%)",
                         min_value=0.0,
                         max_value=200.0,
-                        step=1.0,
+                        step=0.25,
                         format="%.2f"
                     )
                 )
@@ -297,7 +300,7 @@ elif product_type != "Participation":
                         "Autocall Trigger (%)",
                         min_value=0.0,
                         max_value=200.0,
-                        step=1.0,
+                        step=0.25,
                         format="%.2f"
                     )
                 )
@@ -327,7 +330,8 @@ elif product_type != "Participation":
             min_value=0.0,
             max_value=200.0,
             value=70.0,
-            step=1.0,
+            step=0.25,
+            format="%.2f",
             key="income_trigger"
         )
 
@@ -347,6 +351,7 @@ elif product_type != "Participation":
         max_value=100.0,
         value=5.0,
         step=0.25,
+        format="%.2f",
         key="coupon_pa"
     )
 
@@ -355,7 +360,8 @@ elif product_type != "Participation":
         min_value=0.0,
         max_value=100.0,
         value=60.0,
-        step=1.0,
+        step=0.25,
+        format="%.2f",
         key="capital_barrier"
     )
 
@@ -378,7 +384,8 @@ else:
         min_value=0.0,
         max_value=1000.0,
         value=150.0,
-        step=5.0,
+        step=0.25,
+        format="%.2f",
         key="participation_rate"
     )
 
@@ -387,7 +394,8 @@ else:
         min_value=0.0,
         max_value=200.0,
         value=100.0,
-        step=1.0,
+        step=0.25,
+        format="%.2f",
         key="participation_strike"
     )
 
@@ -410,7 +418,8 @@ else:
             min_value=0.0,
             max_value=100.0,
             value=95.0,
-            step=1.0,
+            step=0.25,
+            format="%.2f",
             key="protection_level"
         )
 
@@ -426,7 +435,8 @@ else:
             min_value=100.0,
             max_value=1000.0,
             value=150.0,
-            step=5.0,
+            step=0.25,
+            format="%.2f",
             key="upside_cap"
         )
     else:
@@ -605,15 +615,15 @@ if uploaded_file is not None:
             },
             {
                 "Parameter": "Autocall Trigger",
-                "Value": f"{autocall_trigger}%"
+                "Value": f"{autocall_trigger:.2f}%"
             },
             {
                 "Parameter": "Coupon p.a.",
-                "Value": f"{coupon_pa}%"
+                "Value": f"{coupon_pa:.2f}%"
             },
             {
                 "Parameter": "Capital Barrier",
-                "Value": f"{capital_barrier}%"
+                "Value": f"{capital_barrier:.2f}%"
             }
         ])
 
@@ -651,7 +661,7 @@ if uploaded_file is not None:
         ]:
             summary_data.append({
                 "Parameter": "Income Trigger",
-                "Value": f"{income_trigger}%"
+                "Value": f"{income_trigger:.2f}%"
             })
 
             summary_data.append({
