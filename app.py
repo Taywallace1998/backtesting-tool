@@ -5,6 +5,7 @@ from products.classic_autocall import run_backtest as run_classic_backtest
 from products.phoenix_autocall import run_backtest as run_phoenix_backtest
 from products.participation import run_backtest as run_participation_backtest
 from products.fixed_income import run_backtest as run_fixed_income_backtest
+from products.conditional_income import run_backtest as run_conditional_income_backtest
 from charts import (
     create_underlying_performance_chart,
     create_autocall_distribution_chart
@@ -49,6 +50,7 @@ product_type = st.sidebar.selectbox(
         "Step-Down Autocall",
         "Phoenix Autocall",
         "Step-Down Phoenix Autocall",
+        "Conditional Income",
         "Fixed Income",
         "Participation"
     ],
@@ -109,6 +111,64 @@ if product_type == "Fixed Income":
     step_down_schedule = None
     income_trigger = None
     memory_coupon = "No"
+
+    participation_rate = None
+    participation_strike = None
+    protection_type = None
+    protection_level = None
+    upside_cap = None
+
+elif product_type == "Conditional Income":
+
+    income_frequency = st.sidebar.selectbox(
+        "Income Frequency",
+        ["Annual", "Semi-Annual", "Quarterly", "Monthly"],
+        index=2,
+        key="conditional_income_frequency"
+    )
+
+    income_trigger = st.sidebar.number_input(
+        "Income Trigger (%)",
+        min_value=0.0,
+        max_value=200.0,
+        value=70.0,
+        step=0.25,
+        format="%.2f",
+        key="conditional_income_trigger"
+    )
+
+    memory_coupon = st.sidebar.selectbox(
+        "Memory Coupon",
+        ["Yes", "No"],
+        key="conditional_income_memory_coupon"
+    )
+
+    coupon_pa = st.sidebar.number_input(
+        "Coupon p.a. (%)",
+        min_value=0.0,
+        max_value=100.0,
+        value=5.0,
+        step=0.25,
+        format="%.2f",
+        key="conditional_income_coupon_pa"
+    )
+
+    capital_barrier = st.sidebar.number_input(
+        "Capital Barrier (%)",
+        min_value=0.0,
+        max_value=100.0,
+        value=60.0,
+        step=0.25,
+        format="%.2f",
+        key="conditional_income_capital_barrier"
+    )
+
+    observation_frequency = None
+    autocall_frequency = None
+    first_call_month = None
+    autocall_trigger = None
+    step_down_size = 0.0
+    step_down_schedule = None
 
     participation_rate = None
     participation_strike = None
@@ -532,6 +592,39 @@ if uploaded_file is not None:
             }
         ]
 
+    elif product_type == "Conditional Income":
+
+        summary_data = [
+            {
+                "Parameter": "Product Type",
+                "Value": product_type
+            },
+            {
+                "Parameter": "Tenor",
+                "Value": f"{tenor_months} months"
+            },
+            {
+                "Parameter": "Income Frequency",
+                "Value": income_frequency
+            },
+            {
+                "Parameter": "Income Trigger",
+                "Value": f"{income_trigger:.2f}%"
+            },
+            {
+                "Parameter": "Memory Coupon",
+                "Value": memory_coupon
+            },
+            {
+                "Parameter": "Coupon p.a.",
+                "Value": f"{coupon_pa:.2f}%"
+            },
+            {
+                "Parameter": "Capital Barrier",
+                "Value": f"{capital_barrier:.2f}%"
+            }
+        ]
+
     elif product_type == "Participation":
 
         summary_data = [
@@ -800,6 +893,25 @@ if uploaded_file is not None:
                 step_down_size=step_down_size,
                 product_type=product_type,
                 step_down_schedule=step_down_schedule
+            )
+
+        # =========================
+        # Conditional Income
+        # =========================
+
+        elif product_type == "Conditional Income":
+
+            results = run_conditional_income_backtest(
+                df=df,
+                date_column=date_column,
+                price_columns=price_columns,
+                tenor_months=tenor_months,
+                income_frequency=income_frequency,
+                income_trigger=income_trigger,
+                memory_coupon=memory_coupon,
+                coupon_pa=coupon_pa,
+                capital_barrier=capital_barrier,
+                notional=notional
             )
 
         # =========================
@@ -1111,6 +1223,107 @@ if uploaded_file is not None:
             summary_stats = pd.DataFrame(
                 summary_rows
             )
+
+        # =========================
+        # Conditional Income Summary
+        # =========================
+
+        elif product_type == "Conditional Income":
+
+            total_tested = len(results)
+
+            returned_full_capital = (
+                results["Event"]
+                == "Matured, Capital Protected"
+            ).sum()
+
+            barrier_breached = (
+                results["Event"]
+                == "Matured, Barrier Breached"
+            ).sum()
+
+            total_income_payments_paid = int(
+                results["Coupons Paid"].sum()
+            )
+
+            total_income_opportunities = int(
+                results[
+                    "Coupon Opportunities Until Exit"
+                ].sum()
+            )
+
+            total_income_payments_missed = (
+                total_income_opportunities
+                - total_income_payments_paid
+            )
+
+            coupon_paid_percentage = (
+                total_income_payments_paid
+                / total_income_opportunities
+                * 100
+                if total_income_opportunities
+                else 0
+            )
+
+            coupon_missed_percentage = (
+                total_income_payments_missed
+                / total_income_opportunities
+                * 100
+                if total_income_opportunities
+                else 0
+            )
+
+            average_flat_coupon_return = (
+                results[
+                    "Flat Coupon Return p.a. (%)"
+                ].mean()
+            )
+
+            average_annualised_return = (
+                results[
+                    "Annualised Return (%)"
+                ].mean()
+            )
+
+            summary_stats = pd.DataFrame({
+                "Outcome": [
+                    "Total Tested",
+                    "Returned Full Capital",
+                    "Barrier Breached",
+                    "Total Income Payments Paid",
+                    "Total Income Payments Missed",
+                    "Average Flat Coupon Return p.a.",
+                    "Average Annualised Return",
+                    "Max Return",
+                    "Min Return"
+                ],
+                "Number": [
+                    total_tested,
+                    returned_full_capital,
+                    barrier_breached,
+                    total_income_payments_paid,
+                    total_income_payments_missed,
+                    None,
+                    None,
+                    None,
+                    None
+                ],
+                "Percentage": [
+                    "100.00%",
+                    (
+                        f"{returned_full_capital / total_tested * 100:.2f}%"
+                    ),
+                    (
+                        f"{barrier_breached / total_tested * 100:.2f}%"
+                    ),
+                    f"{coupon_paid_percentage:.2f}%",
+                    f"{coupon_missed_percentage:.2f}%",
+                    f"{average_flat_coupon_return:.2f}%",
+                    f"{average_annualised_return:.2f}%",
+                    f"{max_return:.2f}%",
+                    f"{min_return:.2f}%"
+                ]
+            })
 
         # =========================
         # Fixed Income Summary
@@ -1452,7 +1665,8 @@ if uploaded_file is not None:
 
         if product_type not in [
             "Participation",
-            "Fixed Income"
+            "Fixed Income",
+            "Conditional Income"
         ]:
 
             autocall_summary = (
@@ -1685,6 +1899,16 @@ if uploaded_file is not None:
 
             selected_inputs.update({
                 "income_frequency": income_frequency,
+                "coupon_pa": coupon_pa,
+                "capital_barrier": capital_barrier
+            })
+
+        elif product_type == "Conditional Income":
+
+            selected_inputs.update({
+                "income_frequency": income_frequency,
+                "income_trigger": income_trigger,
+                "memory_coupon": memory_coupon,
                 "coupon_pa": coupon_pa,
                 "capital_barrier": capital_barrier
             })
