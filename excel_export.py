@@ -101,6 +101,33 @@ def create_excel_export(
             ]
         })
 
+    elif product_type == "Conditional Income":
+
+        inputs_df = pd.DataFrame({
+            "Input": [
+                "Product Type",
+                "Tenor months",
+                "Income Frequency",
+                "Income Trigger (%)",
+                "Memory Coupon",
+                "Coupon p.a. (%)",
+                "Capital Barrier (%)",
+                "Date Column",
+                "Underlying Columns"
+            ],
+            "Value": [
+                product_type,
+                tenor_months,
+                income_frequency,
+                income_trigger,
+                memory_coupon,
+                coupon_pa,
+                capital_barrier,
+                date_column,
+                ", ".join(price_columns)
+            ]
+        })
+
     elif product_type == "Participation":
 
         inputs_df = pd.DataFrame({
@@ -358,7 +385,8 @@ def create_excel_export(
 
         if product_type in [
             "Phoenix Autocall",
-            "Step-Down Phoenix Autocall"
+            "Step-Down Phoenix Autocall",
+            "Conditional Income"
         ]:
 
             phoenix_columns = [
@@ -377,11 +405,17 @@ def create_excel_export(
 
             if phoenix_columns:
 
+                coupon_analysis_sheet = (
+                    "Conditional Income Analysis"
+                    if product_type == "Conditional Income"
+                    else "Phoenix Coupon Analysis"
+                )
+
                 results[
                     phoenix_columns
                 ].to_excel(
                     writer,
-                    sheet_name="Phoenix Coupon Analysis",
+                    sheet_name=coupon_analysis_sheet,
                     index=False
                 )
 
@@ -528,7 +562,28 @@ def create_excel_export(
                     "autocall at the relevant observation."
                 ),
 
-                # Phoenix
+                "Autocall Trigger Used (%)": (
+                    "Autocall trigger applied at the observation where "
+                    "the simulated product autocalled or matured."
+                ),
+
+                # Conditional income / Phoenix
+                "Income Trigger (%)": (
+                    "Minimum worst-performing underlying level required "
+                    "for the scheduled income coupon to be paid."
+                ),
+
+                "Memory Coupon": (
+                    "Yes means missed conditional income coupons are "
+                    "carried forward and recovered when a later income "
+                    "observation meets the Income Trigger."
+                ),
+
+                "Coupon p.a. (%)": (
+                    "Annual coupon rate used to calculate the scheduled "
+                    "conditional income payment."
+                ),
+
                 "Coupon Paid This Observation (%)": (
                     "Income coupon paid at the relevant observation."
                 ),
