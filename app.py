@@ -1716,6 +1716,49 @@ if uploaded_file is not None:
                     )
                 )
 
+            elif product_type in [
+                "Phoenix Autocall",
+                "Step-Down Phoenix Autocall"
+            ]:
+
+                if (
+                    product_type
+                    == "Step-Down Phoenix Autocall"
+                    and step_down_schedule
+                ):
+                    scheduled_observation_months = (
+                        sorted(
+                            step_down_schedule.keys()
+                        )
+                    )
+
+                else:
+
+                    if autocall_frequency == "Annual":
+                        distribution_step_months = 12
+                    elif autocall_frequency == "Semi-Annual":
+                        distribution_step_months = 6
+                    elif autocall_frequency == "Quarterly":
+                        distribution_step_months = 3
+                    else:
+                        distribution_step_months = 1
+
+                    # Phoenix maturity is not an autocall
+                    # observation, so tenor_months is excluded.
+                    scheduled_observation_months = list(
+                        range(
+                            first_call_month,
+                            tenor_months,
+                            distribution_step_months
+                        )
+                    )
+
+            else:
+
+                scheduled_observation_months = []
+
+            if scheduled_observation_months:
+
                 scheduled_observations = pd.DataFrame({
                     "Observation Month": (
                         scheduled_observation_months
