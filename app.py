@@ -122,7 +122,13 @@ elif product_type == "Conditional Income":
 
     income_frequency = st.sidebar.selectbox(
         "Income Frequency",
-        ["Annual", "Semi-Annual", "Quarterly", "Monthly"],
+        [
+            "Annual",
+            "Semi-Annual",
+            "Quarterly",
+            "Monthly",
+            "At Maturity"
+        ],
         index=2,
         key="conditional_income_frequency"
     )
@@ -137,11 +143,17 @@ elif product_type == "Conditional Income":
         key="conditional_income_trigger"
     )
 
-    memory_coupon = st.sidebar.selectbox(
-        "Memory Coupon",
-        ["Yes", "No"],
-        key="conditional_income_memory_coupon"
-    )
+    if income_frequency == "At Maturity":
+
+        memory_coupon = "No"
+
+    else:
+
+        memory_coupon = st.sidebar.selectbox(
+            "Memory Coupon",
+            ["Yes", "No"],
+            key="conditional_income_memory_coupon"
+        )
 
     coupon_pa = st.sidebar.number_input(
         "Coupon p.a. (%)",
@@ -612,10 +624,6 @@ if uploaded_file is not None:
                 "Value": f"{income_trigger:.2f}%"
             },
             {
-                "Parameter": "Memory Coupon",
-                "Value": memory_coupon
-            },
-            {
                 "Parameter": "Coupon p.a.",
                 "Value": f"{coupon_pa:.2f}%"
             },
@@ -624,6 +632,15 @@ if uploaded_file is not None:
                 "Value": f"{capital_barrier:.2f}%"
             }
         ]
+
+        if income_frequency != "At Maturity":
+            summary_data.insert(
+                4,
+                {
+                    "Parameter": "Memory Coupon",
+                    "Value": memory_coupon
+                }
+            )
 
     elif product_type == "Participation":
 
@@ -2010,10 +2027,14 @@ if uploaded_file is not None:
             selected_inputs.update({
                 "income_frequency": income_frequency,
                 "income_trigger": income_trigger,
-                "memory_coupon": memory_coupon,
                 "coupon_pa": coupon_pa,
                 "capital_barrier": capital_barrier
             })
+
+            if income_frequency != "At Maturity":
+                selected_inputs[
+                    "memory_coupon"
+                ] = memory_coupon
 
         elif product_type == "Participation":
 
