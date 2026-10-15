@@ -1680,6 +1680,65 @@ if uploaded_file is not None:
                 )
             )
 
+            if product_type in [
+                "Classic Autocall",
+                "Step-Down Autocall"
+            ]:
+
+                if observation_frequency == "Annual":
+                    distribution_step_months = 12
+                elif observation_frequency == "Semi-Annual":
+                    distribution_step_months = 6
+                elif observation_frequency == "Quarterly":
+                    distribution_step_months = 3
+                else:
+                    distribution_step_months = 1
+
+                scheduled_observation_months = list(
+                    range(
+                        first_call_month,
+                        tenor_months + 1,
+                        distribution_step_months
+                    )
+                )
+
+                if (
+                    tenor_months
+                    not in scheduled_observation_months
+                ):
+                    scheduled_observation_months.append(
+                        tenor_months
+                    )
+
+                scheduled_observation_months = sorted(
+                    set(
+                        scheduled_observation_months
+                    )
+                )
+
+                scheduled_observations = pd.DataFrame({
+                    "Observation Month": (
+                        scheduled_observation_months
+                    )
+                })
+
+                autocall_summary = (
+                    scheduled_observations
+                    .merge(
+                        autocall_summary,
+                        on="Observation Month",
+                        how="left"
+                    )
+                )
+
+                autocall_summary["Autocalled"] = (
+                    autocall_summary[
+                        "Autocalled"
+                    ]
+                    .fillna(0)
+                    .astype(int)
+                )
+
             autocall_summary[
                 "Autocall Test"
             ] = (
