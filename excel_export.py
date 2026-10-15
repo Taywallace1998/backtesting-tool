@@ -103,30 +103,32 @@ def create_excel_export(
 
     elif product_type == "Conditional Income":
 
-        inputs_df = pd.DataFrame({
-            "Input": [
-                "Product Type",
-                "Tenor months",
-                "Income Frequency",
-                "Income Trigger (%)",
-                "Memory Coupon",
-                "Coupon p.a. (%)",
-                "Capital Barrier (%)",
-                "Date Column",
-                "Underlying Columns"
-            ],
-            "Value": [
-                product_type,
-                tenor_months,
-                income_frequency,
-                income_trigger,
-                memory_coupon,
-                coupon_pa,
-                capital_barrier,
-                date_column,
+        conditional_inputs = [
+            ["Product Type", product_type],
+            ["Tenor months", tenor_months],
+            ["Income Frequency", income_frequency],
+            ["Income Trigger (%)", income_trigger]
+        ]
+
+        if income_frequency != "At Maturity":
+            conditional_inputs.append(
+                ["Memory Coupon", memory_coupon]
+            )
+
+        conditional_inputs.extend([
+            ["Coupon p.a. (%)", coupon_pa],
+            ["Capital Barrier (%)", capital_barrier],
+            ["Date Column", date_column],
+            [
+                "Underlying Columns",
                 ", ".join(price_columns)
             ]
-        })
+        ])
+
+        inputs_df = pd.DataFrame(
+            conditional_inputs,
+            columns=["Input", "Value"]
+        )
 
     elif product_type == "Participation":
 
