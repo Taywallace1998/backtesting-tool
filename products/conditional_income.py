@@ -39,29 +39,39 @@ def run_single_backtest(
     actual_trade_date = initial_row[date_column]
     initial_levels = initial_row[price_columns]
 
-    income_step_months = frequency_to_months(
-        income_frequency
-    )
+    if income_frequency == "At Maturity":
 
-    coupon_observation_months = list(
-        range(
-            income_step_months,
-            tenor_months + 1,
-            income_step_months
-        )
-    )
+        income_step_months = tenor_months
 
-    # Match the Phoenix convention: maturity always gets
-    # an income observation. If maturity is an irregular
-    # final observation it receives the full regular coupon.
-    if tenor_months not in coupon_observation_months:
-        coupon_observation_months.append(
+        coupon_observation_months = [
             tenor_months
+        ]
+
+    else:
+
+        income_step_months = frequency_to_months(
+            income_frequency
         )
 
-    coupon_observation_months = sorted(
-        set(coupon_observation_months)
-    )
+        coupon_observation_months = list(
+            range(
+                income_step_months,
+                tenor_months + 1,
+                income_step_months
+            )
+        )
+
+        # Match the Phoenix convention: maturity always gets
+        # an income observation. If maturity is an irregular
+        # final observation it receives the full regular coupon.
+        if tenor_months not in coupon_observation_months:
+            coupon_observation_months.append(
+                tenor_months
+            )
+
+        coupon_observation_months = sorted(
+            set(coupon_observation_months)
+        )
 
     maturity_date = (
         actual_trade_date
@@ -76,11 +86,21 @@ def run_single_backtest(
     last_coupon_paid = 0
     coupons_paid_count = 0
 
-    coupon_for_period = (
-        coupon_pa
-        * income_step_months
-        / 12
-    )
+    if income_frequency == "At Maturity":
+
+        coupon_for_period = (
+            coupon_pa
+            * tenor_months
+            / 12
+        )
+
+    else:
+
+        coupon_for_period = (
+            coupon_pa
+            * income_step_months
+            / 12
+        )
 
     final_obs_date = None
     final_obs_levels = None
