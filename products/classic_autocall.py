@@ -15,7 +15,9 @@ def run_single_backtest(
     coupon_pa,
     capital_barrier,
     notional,
-    step_down_schedule=None
+    step_down_schedule=None,
+    apply_one_star_barrier=False,
+    one_star_barrier=None
 ):
     df = df.copy()
     trade_date = pd.to_datetime(trade_date)
@@ -144,14 +146,46 @@ def run_single_backtest(
     worst_initial_level = initial_levels[worst_underlying]
     worst_final_level = final_levels[worst_underlying]
 
+    one_star_underlying = None
+
     if worst_final_performance >= capital_barrier / 100:
         final_event = "Matured, Capital Protected"
         final_return = 0
         payoff = notional
     else:
-        final_event = "Matured, Barrier Breached"
-        payoff = notional * worst_final_performance
-        final_return = (payoff / notional - 1) * 100
+        one_star_met = False
+
+        if (
+            product_type == "Classic Autocall"
+            and apply_one_star_barrier
+            and one_star_barrier is not None
+            and len(price_columns) > 1
+        ):
+            other_performances = final_performances.drop(
+                labels=[worst_underlying]
+            )
+
+            qualifying_one_star = (
+                other_performances[
+                    other_performances
+                    >= one_star_barrier / 100
+                ]
+            )
+
+            if not qualifying_one_star.empty:
+                one_star_met = True
+                one_star_underlying = (
+                    qualifying_one_star.idxmax()
+                )
+
+        if one_star_met:
+            final_event = "Matured, One Star Protection"
+            final_return = 0
+            payoff = notional
+        else:
+            final_event = "Matured, Barrier Breached"
+            payoff = notional * worst_final_performance
+            final_return = (payoff / notional - 1) * 100
 
     annualised_return = (
         ((1 + final_return / 100) ** (12 / tenor_months)) - 1
@@ -163,7 +197,7 @@ def run_single_backtest(
         (payoff - 100) / observation_year
     )
 
-    return {
+    result = {
         "Trade Date": actual_trade_date.date(),
         "Final Observation Date": maturity_actual_date.date(),
         "Observation Month": tenor_months,
@@ -179,6 +213,23 @@ def run_single_backtest(
         "Annualised Return (%)": round(annualised_return, 2),
     }
 
+    if (
+        product_type == "Classic Autocall"
+        and apply_one_star_barrier
+        and one_star_barrier is not None
+    ):
+        result["One Star Barrier (%)"] = round(
+            one_star_barrier,
+            2
+        )
+        result["One Star Underlying"] = (
+            one_star_underlying
+            if one_star_underlying is not None
+            else ""
+        )
+
+    return result
+
 
 def run_backtest(
     df,
@@ -193,7 +244,9 @@ def run_backtest(
     coupon_pa,
     capital_barrier,
     notional,
-    step_down_schedule=None
+    step_down_schedule=None,
+    apply_one_star_barrier=False,
+    one_star_barrier=None
 ):
     df = df.copy()
 
@@ -239,7 +292,9 @@ def run_backtest(
             coupon_pa=coupon_pa,
             capital_barrier=capital_barrier,
             notional=notional,
-            step_down_schedule=step_down_schedule
+            step_down_schedule=step_down_schedule,
+            apply_one_star_barrier=apply_one_star_barrier,
+            one_star_barrier=one_star_barrier
         )
 
         if result is not None:
