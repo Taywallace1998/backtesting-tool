@@ -69,6 +69,9 @@ tenor_months = st.sidebar.number_input(
 # Fixed 100 reference amount for payoff calculations
 notional = 100.0
 
+apply_one_star_barrier = False
+one_star_barrier = None
+
 
 # =========================
 # Product inputs
@@ -437,6 +440,34 @@ elif product_type != "Participation":
         key="capital_barrier"
     )
 
+    selected_underlyings = st.session_state.get(
+        "price_columns",
+        []
+    )
+
+    if (
+        product_type == "Classic Autocall"
+        and len(selected_underlyings) >= 2
+    ):
+        apply_one_star_barrier = (
+            st.sidebar.checkbox(
+                "Apply One Star Barrier",
+                value=False,
+                key="apply_one_star_barrier"
+            )
+        )
+
+        if apply_one_star_barrier:
+            one_star_barrier = st.sidebar.number_input(
+                "One Star Barrier (%)",
+                min_value=0.0,
+                max_value=200.0,
+                value=100.0,
+                step=0.25,
+                format="%.2f",
+                key="one_star_barrier"
+            )
+
     # Participation variables not used
     participation_rate = None
     participation_strike = None
@@ -737,6 +768,16 @@ if uploaded_file is not None:
             }
         ])
 
+        if (
+            product_type == "Classic Autocall"
+            and apply_one_star_barrier
+            and one_star_barrier is not None
+        ):
+            summary_data.append({
+                "Parameter": "One Star Barrier",
+                "Value": f"{one_star_barrier:.2f}%"
+            })
+
         if product_type == "Step-Down Autocall":
 
             schedule_text = ", ".join(
@@ -881,7 +922,17 @@ if uploaded_file is not None:
                 coupon_pa=coupon_pa,
                 step_down_schedule=step_down_schedule,
                 capital_barrier=capital_barrier,
-                notional=notional
+                notional=notional,
+                apply_one_star_barrier=(
+                    apply_one_star_barrier
+                    if product_type == "Classic Autocall"
+                    else False
+                ),
+                one_star_barrier=(
+                    one_star_barrier
+                    if product_type == "Classic Autocall"
+                    else None
+                )
             )
 
         # =========================
@@ -1591,9 +1642,22 @@ if uploaded_file is not None:
 
             else:
 
+                total_one_star_protected = (
+                    (
+                        results["Event"]
+                        == "Matured, One Star Protection"
+                    ).sum()
+                    if (
+                        product_type == "Classic Autocall"
+                        and apply_one_star_barrier
+                    )
+                    else 0
+                )
+
                 returned_full_capital = (
                     total_autocalled
                     + total_returned_capital
+                    + total_one_star_protected
                 )
 
                 returned_full_capital_percentage = (
@@ -1604,66 +1668,113 @@ if uploaded_file is not None:
                     else 0
                 )
 
-                summary_stats = pd.DataFrame({
-                    "Outcome": [
-                        "Total Tested",
-                        "Total Autocalled",
-                        "Returned Capital",
-                        "Lost Capital",
-                        "Returned Full Capital",
-                        "Check Total",
-                        "Average Flat Coupon Return p.a.",
-                        "Average Annualised Return",
-                        "Max Return",
-                        "Min Return"
-                    ],
-                    "Number": [
-                        total_tested,
-                        total_autocalled,
-                        total_returned_capital,
-                        total_lost_capital,
-                        returned_full_capital,
-                        (
-                            total_autocalled
-                            + total_returned_capital
-                            + total_lost_capital
-                        ),
-                        None,
-                        None,
-                        None,
-                        None
-                    ],
-                    "Percentage": [
-                        "100.00%",
-                        (
+                summary_rows = [
+                    {
+                        "Outcome": "Total Tested",
+                        "Number": total_tested,
+                        "Percentage": "100.00%",
+                        "Factsheet Headings": (
+                            "Total Number Tested"
+                        )
+                    },
+                    {
+                        "Outcome": "Total Autocalled",
+                        "Number": total_autocalled,
+                        "Percentage": (
                             f"{total_autocalled / total_tested * 100:.2f}%"
                         ),
-                        (
+                        "Factsheet Headings": "% matured Early"
+                    },
+                    {
+                        "Outcome": "Returned Capital",
+                        "Number": total_returned_capital,
+                        "Percentage": (
                             f"{total_returned_capital / total_tested * 100:.2f}%"
                         ),
-                        (
+                        "Factsheet Headings": "% to reach Final Date"
+                    }
+                ]
+
+                if (
+                    product_type == "Classic Autocall"
+                    and apply_one_star_barrier
+                ):
+                    summary_rows.append({
+                        "Outcome": "One Star Protection",
+                        "Number": total_one_star_protected,
+                        "Percentage": (
+                            f"{total_one_star_protected / total_tested * 100:.2f}%"
+                        ),
+                        "Factsheet Headings": ""
+                    })
+
+                summary_rows.extend([
+                    {
+                        "Outcome": "Lost Capital",
+                        "Number": total_lost_capital,
+                        "Percentage": (
                             f"{total_lost_capital / total_tested * 100:.2f}%"
                         ),
-                        f"{returned_full_capital_percentage:.2f}%",
-                        "100.00%",
-                        f"{average_flat_coupon_return:.2f}%",
-                        f"{average_annualised_return:.2f}%",
-                        f"{max_return:.2f}%",
-                        f"{min_return:.2f}%"
-                    ],
-                    "Factsheet Headings": [
-                        "Total Number Tested",
-                        "% matured Early",
-                        "% to reach Final Date",
-                        "% barrier breach",
-                        "% returned full capital",
-                        "",
-                        "Average Historic Return",
-                        "",
-                        "",
-                        ""
-                    ]
-                })
+                        "Factsheet Headings": "% barrier breach"
+                    },
+                    {
+                        "Outcome": "Returned Full Capital",
+                        "Number": returned_full_capital,
+                        "Percentage": (
+                            f"{returned_full_capital_percentage:.2f}%"
+                        ),
+                        "Factsheet Headings": (
+                            "% returned full capital"
+                        )
+                    },
+                    {
+                        "Outcome": "Check Total",
+                        "Number": (
+                            total_autocalled
+                            + total_returned_capital
+                            + total_one_star_protected
+                            + total_lost_capital
+                        ),
+                        "Percentage": "100.00%",
+                        "Factsheet Headings": ""
+                    },
+                    {
+                        "Outcome": (
+                            "Average Flat Coupon Return p.a."
+                        ),
+                        "Number": None,
+                        "Percentage": (
+                            f"{average_flat_coupon_return:.2f}%"
+                        ),
+                        "Factsheet Headings": (
+                            "Average Historic Return"
+                        )
+                    },
+                    {
+                        "Outcome": "Average Annualised Return",
+                        "Number": None,
+                        "Percentage": (
+                            f"{average_annualised_return:.2f}%"
+                        ),
+                        "Factsheet Headings": ""
+                    },
+                    {
+                        "Outcome": "Max Return",
+                        "Number": None,
+                        "Percentage": f"{max_return:.2f}%",
+                        "Factsheet Headings": ""
+                    },
+                    {
+                        "Outcome": "Min Return",
+                        "Number": None,
+                        "Percentage": f"{min_return:.2f}%",
+                        "Factsheet Headings": ""
+                    }
+                ])
+
+                summary_stats = pd.DataFrame(
+                    summary_rows
+                )
 
         # =========================
         # Display Backtest Summary
@@ -1962,7 +2073,9 @@ if uploaded_file is not None:
             upside_cap=upside_cap,
             income_frequency=income_frequency,
             autocall_frequency=autocall_frequency,
-            step_down_schedule=step_down_schedule
+            step_down_schedule=step_down_schedule,
+            apply_one_star_barrier=apply_one_star_barrier,
+            one_star_barrier=one_star_barrier
         )
 
         # =========================
@@ -2079,6 +2192,16 @@ if uploaded_file is not None:
                     "coupon_pa": coupon_pa,
                     "capital_barrier": capital_barrier
                 })
+
+                if product_type == "Classic Autocall":
+                    selected_inputs[
+                        "apply_one_star_barrier"
+                    ] = apply_one_star_barrier
+
+                    if apply_one_star_barrier:
+                        selected_inputs[
+                            "one_star_barrier"
+                        ] = one_star_barrier
 
         st.json(
             selected_inputs
