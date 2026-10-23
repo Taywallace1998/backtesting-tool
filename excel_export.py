@@ -70,7 +70,9 @@ def create_excel_export(
     upside_cap=None,
     income_frequency=None,
     autocall_frequency=None,
-    step_down_schedule=None
+    step_down_schedule=None,
+    apply_one_star_barrier=False,
+    one_star_barrier=None
 ):
     output = BytesIO()
 
@@ -276,30 +278,41 @@ def create_excel_export(
 
     else:
 
-        inputs_df = pd.DataFrame({
-            "Input": [
-                "Product Type",
-                "Tenor months",
+        classic_inputs = [
+            ["Product Type", product_type],
+            ["Tenor months", tenor_months],
+            [
                 "Observation Frequency",
-                "First Call Month",
-                "Autocall Trigger (%)",
-                "Coupon p.a. (%)",
-                "Capital Barrier (%)",
-                "Date Column",
-                "Underlying Columns"
+                observation_frequency
             ],
-            "Value": [
-                product_type,
-                tenor_months,
-                observation_frequency,
-                first_call_month,
-                autocall_trigger,
-                coupon_pa,
-                capital_barrier,
-                date_column,
+            ["First Call Month", first_call_month],
+            ["Autocall Trigger (%)", autocall_trigger],
+            ["Coupon p.a. (%)", coupon_pa],
+            ["Capital Barrier (%)", capital_barrier]
+        ]
+
+        if (
+            product_type == "Classic Autocall"
+            and apply_one_star_barrier
+            and one_star_barrier is not None
+        ):
+            classic_inputs.extend([
+                ["Apply One Star Barrier", "Yes"],
+                ["One Star Barrier (%)", one_star_barrier]
+            ])
+
+        classic_inputs.extend([
+            ["Date Column", date_column],
+            [
+                "Underlying Columns",
                 ", ".join(price_columns)
             ]
-        })
+        ])
+
+        inputs_df = pd.DataFrame(
+            classic_inputs,
+            columns=["Input", "Value"]
+        )
 
     with pd.ExcelWriter(
         output,
@@ -567,6 +580,19 @@ def create_excel_export(
                 "Autocall Trigger Used (%)": (
                     "Autocall trigger applied at the observation where "
                     "the simulated product autocalled or matured."
+                ),
+
+                "One Star Barrier (%)": (
+                    "Optional maturity-only protection level for Classic "
+                    "Autocall. If the normal capital barrier is breached, "
+                    "full capital is returned when any other underlying "
+                    "finishes at or above this level."
+                ),
+
+                "One Star Underlying": (
+                    "The non-worst underlying that satisfied the One Star "
+                    "Barrier and restored full capital at maturity. Blank "
+                    "where One Star protection was not used."
                 ),
 
                 # Conditional income / Phoenix
