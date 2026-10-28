@@ -1427,6 +1427,12 @@ if uploaded_file is not None:
                 results["Return (%)"].mean()
             )
 
+            average_flat_coupon_return = (
+                results[
+                    "Flat Coupon Return p.a. (%)"
+                ].mean()
+            )
+
             average_annualised_return = (
                 results[
                     "Annualised Return (%)"
@@ -1442,6 +1448,7 @@ if uploaded_file is not None:
                     "Flat Overall Return",
                     "Negative Overall Return",
                     "Average Total Return",
+                    "Average Flat Coupon Return p.a.",
                     "Average Annualised Return",
                     "Max Return",
                     "Min Return"
@@ -1453,6 +1460,7 @@ if uploaded_file is not None:
                     positive_returns,
                     flat_returns,
                     negative_returns,
+                    None,
                     None,
                     None,
                     None,
@@ -1476,6 +1484,7 @@ if uploaded_file is not None:
                         f"{negative_returns / total_tested * 100:.2f}%"
                     ),
                     f"{average_return:.2f}%",
+                    f"{average_flat_coupon_return:.2f}%",
                     f"{average_annualised_return:.2f}%",
                     f"{max_return:.2f}%",
                     f"{min_return:.2f}%"
