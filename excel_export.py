@@ -72,7 +72,10 @@ def create_excel_export(
     autocall_frequency=None,
     step_down_schedule=None,
     apply_one_star_barrier=False,
-    one_star_barrier=None
+    one_star_barrier=None,
+    sharkfin_barrier=None,
+    barrier_monitoring=None,
+    rebate=None
 ):
     output = BytesIO()
 
@@ -131,6 +134,35 @@ def create_excel_export(
             conditional_inputs,
             columns=["Input", "Value"]
         )
+
+    elif product_type == "Sharkfin":
+
+        inputs_df = pd.DataFrame({
+            "Input": [
+                "Product Type",
+                "Tenor months",
+                "Participation Rate (%)",
+                "Participation Strike (%)",
+                "Sharkfin Barrier (%)",
+                "Barrier Monitoring",
+                "Rebate on Barrier Breach (%)",
+                "Capital Protection Level (%)",
+                "Date Column",
+                "Underlying Columns"
+            ],
+            "Value": [
+                product_type,
+                tenor_months,
+                participation_rate,
+                participation_strike,
+                sharkfin_barrier,
+                barrier_monitoring,
+                rebate,
+                protection_level,
+                date_column,
+                ", ".join(price_columns)
+            ]
+        })
 
     elif product_type == "Participation":
 
@@ -690,6 +722,49 @@ def create_excel_export(
                     "the fixed income payments."
                 ),
 
+                # Sharkfin
+                "Barrier Monitoring": (
+                    "European checks the Sharkfin Barrier only at "
+                    "maturity. American checks every available historical "
+                    "observation from the Trade Date through maturity."
+                ),
+
+                "Sharkfin Barrier (%)": (
+                    "Upside knock-out barrier. If breached under the "
+                    "selected monitoring convention, participation is "
+                    "cancelled and the protection level plus rebate is "
+                    "paid."
+                ),
+
+                "Barrier Breached": (
+                    "Yes where any selected underlying reached or exceeded "
+                    "the Sharkfin Barrier under the selected monitoring "
+                    "convention."
+                ),
+
+                "Barrier Breach Underlying": (
+                    "Underlying that triggered the Sharkfin Barrier. For "
+                    "American monitoring this is the first underlying "
+                    "identified on the first breach date."
+                ),
+
+                "Barrier Breach Date": (
+                    "Date on which the Sharkfin Barrier was breached. For "
+                    "European monitoring this is the maturity observation "
+                    "date."
+                ),
+
+                "Max Observed Level (%)": (
+                    "Highest observed underlying level, rebased to 100 at "
+                    "the Trade Date, used to audit the Sharkfin barrier "
+                    "test."
+                ),
+
+                "Rebate (%)": (
+                    "Additional payoff above the Capital Protection Level "
+                    "when the Sharkfin Barrier is breached."
+                ),
+
                 # Participation
                 "Protection Type": (
                     "Selected downside protection structure for the "
@@ -698,7 +773,7 @@ def create_excel_export(
 
                 "Protection Level (%)": (
                     "Capital protection or minimum payoff level used by "
-                    "the Participation structure."
+                    "the Participation or Sharkfin structure."
                 ),
 
                 "Participation Rate (%)": (
