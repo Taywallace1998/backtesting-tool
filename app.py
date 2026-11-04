@@ -6,6 +6,7 @@ from products.phoenix_autocall import run_backtest as run_phoenix_backtest
 from products.participation import run_backtest as run_participation_backtest
 from products.fixed_income import run_backtest as run_fixed_income_backtest
 from products.conditional_income import run_backtest as run_conditional_income_backtest
+from products.sharkfin import run_backtest as run_sharkfin_backtest
 from charts import (
     create_underlying_performance_chart,
     create_autocall_distribution_chart
@@ -52,7 +53,8 @@ product_type = st.sidebar.selectbox(
         "Step-Down Phoenix Autocall",
         "Conditional Income",
         "Fixed Income",
-        "Participation"
+        "Participation",
+        "Sharkfin"
     ],
     key="product_type"
 )
@@ -71,6 +73,10 @@ notional = 100.0
 
 apply_one_star_barrier = False
 one_star_barrier = None
+
+sharkfin_barrier = None
+barrier_monitoring = None
+rebate = None
 
 
 # =========================
@@ -190,6 +196,80 @@ elif product_type == "Conditional Income":
     protection_type = None
     protection_level = None
     upside_cap = None
+
+elif product_type == "Sharkfin":
+
+    participation_rate = st.sidebar.number_input(
+        "Participation Rate (%)",
+        min_value=0.0,
+        max_value=1000.0,
+        value=150.0,
+        step=0.25,
+        format="%.2f",
+        key="sharkfin_participation_rate"
+    )
+
+    participation_strike = st.sidebar.number_input(
+        "Participation Strike (%)",
+        min_value=0.0,
+        max_value=200.0,
+        value=100.0,
+        step=0.25,
+        format="%.2f",
+        key="sharkfin_participation_strike"
+    )
+
+    sharkfin_barrier = st.sidebar.number_input(
+        "Sharkfin Barrier (%)",
+        min_value=0.0,
+        max_value=500.0,
+        value=130.0,
+        step=0.25,
+        format="%.2f",
+        key="sharkfin_barrier"
+    )
+
+    barrier_monitoring = st.sidebar.radio(
+        "Barrier Monitoring",
+        ["European", "American"],
+        horizontal=True,
+        key="sharkfin_barrier_monitoring"
+    )
+
+    rebate = st.sidebar.number_input(
+        "Rebate on Barrier Breach (%)",
+        min_value=0.0,
+        max_value=1000.0,
+        value=5.0,
+        step=0.25,
+        format="%.2f",
+        key="sharkfin_rebate"
+    )
+
+    protection_level = st.sidebar.number_input(
+        "Capital Protection Level (%)",
+        min_value=0.0,
+        max_value=100.0,
+        value=100.0,
+        step=0.25,
+        format="%.2f",
+        key="sharkfin_protection_level"
+    )
+
+    protection_type = None
+    upside_cap = None
+
+    observation_frequency = None
+    income_frequency = None
+    autocall_frequency = None
+    first_call_month = None
+    autocall_trigger = None
+    step_down_size = 0.0
+    step_down_schedule = None
+    income_trigger = None
+    memory_coupon = "No"
+    coupon_pa = None
+    capital_barrier = None
 
 elif product_type != "Participation":
 
@@ -673,6 +753,43 @@ if uploaded_file is not None:
                 }
             )
 
+    elif product_type == "Sharkfin":
+
+        summary_data = [
+            {
+                "Parameter": "Product Type",
+                "Value": product_type
+            },
+            {
+                "Parameter": "Tenor",
+                "Value": f"{tenor_months} months"
+            },
+            {
+                "Parameter": "Participation Rate",
+                "Value": f"{participation_rate:.2f}%"
+            },
+            {
+                "Parameter": "Participation Strike",
+                "Value": f"{participation_strike:.2f}%"
+            },
+            {
+                "Parameter": "Sharkfin Barrier",
+                "Value": f"{sharkfin_barrier:.2f}%"
+            },
+            {
+                "Parameter": "Barrier Monitoring",
+                "Value": barrier_monitoring
+            },
+            {
+                "Parameter": "Rebate on Barrier Breach",
+                "Value": f"{rebate:.2f}%"
+            },
+            {
+                "Parameter": "Capital Protection Level",
+                "Value": f"{protection_level:.2f}%"
+            }
+        ]
+
     elif product_type == "Participation":
 
         summary_data = [
@@ -1000,6 +1117,25 @@ if uploaded_file is not None:
             )
 
         # =========================
+        # Sharkfin
+        # =========================
+
+        elif product_type == "Sharkfin":
+
+            results = run_sharkfin_backtest(
+                df=df,
+                date_column=date_column,
+                price_columns=price_columns,
+                tenor_months=tenor_months,
+                participation_rate=participation_rate,
+                participation_strike=participation_strike,
+                sharkfin_barrier=sharkfin_barrier,
+                barrier_monitoring=barrier_monitoring,
+                rebate=rebate,
+                protection_level=protection_level
+            )
+
+        # =========================
         # Participation
         # =========================
 
@@ -1052,10 +1188,127 @@ if uploaded_file is not None:
         )
 
         # =========================
+        # Sharkfin Summary
+        # =========================
+
+        if product_type == "Sharkfin":
+
+            total_tested = len(results)
+
+            barrier_breached_count = (
+                results["Barrier Breached"]
+                == "Yes"
+            ).sum()
+
+            participated_count = (
+                results["Event"]
+                == "Matured, Participation"
+            ).sum()
+
+            no_participation_count = (
+                results["Event"]
+                == "Matured, No Participation"
+            ).sum()
+
+            positive_returns = (
+                results["Return (%)"] > 0
+            ).sum()
+
+            flat_returns = (
+                results["Return (%)"] == 0
+            ).sum()
+
+            negative_returns = (
+                results["Return (%)"] < 0
+            ).sum()
+
+            average_return = (
+                results["Return (%)"].mean()
+            )
+
+            average_annualised_return = (
+                results[
+                    "Annualised Return (%)"
+                ].mean()
+            )
+
+            average_underlying_performance = (
+                results[
+                    "Underlying Performance (%)"
+                ].mean()
+            )
+
+            average_participation_return = (
+                results[
+                    "Participation Return (%)"
+                ].mean()
+            )
+
+            summary_stats = pd.DataFrame({
+                "Outcome": [
+                    "Total Tested",
+                    "Sharkfin Barrier Breached",
+                    "Matured, Participation",
+                    "Matured, No Participation",
+                    "Positive Return",
+                    "Flat Return",
+                    "Negative Return",
+                    "Average Return",
+                    "Average Annualised Return",
+                    "Average Underlying Performance",
+                    "Average Participation Return",
+                    "Max Return",
+                    "Min Return"
+                ],
+                "Number": [
+                    total_tested,
+                    barrier_breached_count,
+                    participated_count,
+                    no_participation_count,
+                    positive_returns,
+                    flat_returns,
+                    negative_returns,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None
+                ],
+                "Percentage": [
+                    "100.00%",
+                    (
+                        f"{barrier_breached_count / total_tested * 100:.2f}%"
+                    ),
+                    (
+                        f"{participated_count / total_tested * 100:.2f}%"
+                    ),
+                    (
+                        f"{no_participation_count / total_tested * 100:.2f}%"
+                    ),
+                    (
+                        f"{positive_returns / total_tested * 100:.2f}%"
+                    ),
+                    (
+                        f"{flat_returns / total_tested * 100:.2f}%"
+                    ),
+                    (
+                        f"{negative_returns / total_tested * 100:.2f}%"
+                    ),
+                    f"{average_return:.2f}%",
+                    f"{average_annualised_return:.2f}%",
+                    f"{average_underlying_performance:.2f}%",
+                    f"{average_participation_return:.2f}%",
+                    f"{max_return:.2f}%",
+                    f"{min_return:.2f}%"
+                ]
+            })
+
+        # =========================
         # Participation Summary
         # =========================
 
-        if product_type == "Participation":
+        elif product_type == "Participation":
 
             total_tested = len(results)
 
@@ -1802,6 +2055,7 @@ if uploaded_file is not None:
 
         if product_type not in [
             "Participation",
+            "Sharkfin",
             "Fixed Income",
             "Conditional Income"
         ]:
@@ -2084,7 +2338,10 @@ if uploaded_file is not None:
             autocall_frequency=autocall_frequency,
             step_down_schedule=step_down_schedule,
             apply_one_star_barrier=apply_one_star_barrier,
-            one_star_barrier=one_star_barrier
+            one_star_barrier=one_star_barrier,
+            sharkfin_barrier=sharkfin_barrier,
+            barrier_monitoring=barrier_monitoring,
+            rebate=rebate
         )
 
         # =========================
@@ -2157,6 +2414,17 @@ if uploaded_file is not None:
                 selected_inputs[
                     "memory_coupon"
                 ] = memory_coupon
+
+        elif product_type == "Sharkfin":
+
+            selected_inputs.update({
+                "participation_rate": participation_rate,
+                "participation_strike": participation_strike,
+                "sharkfin_barrier": sharkfin_barrier,
+                "barrier_monitoring": barrier_monitoring,
+                "rebate": rebate,
+                "protection_level": protection_level
+            })
 
         elif product_type == "Participation":
 
