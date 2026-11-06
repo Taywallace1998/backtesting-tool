@@ -12,6 +12,7 @@ from charts import (
     create_autocall_distribution_chart
 )
 from excel_export import create_excel_export
+from backtest_summary import autocall_participation_summary
 
 
 st.set_page_config(
@@ -1217,7 +1218,12 @@ if uploaded_file is not None:
         # Sharkfin Summary
         # =========================
 
-        if product_type == "Sharkfin":
+        if product_type == "Autocall + Participation":
+            total_tested = len(results)
+            total_autocalled = int(results["Event"].eq("Autocalled").sum())
+            summary_stats = autocall_participation_summary(results)
+
+        elif product_type == "Sharkfin":
 
             total_tested = len(results)
 
