@@ -271,7 +271,7 @@ def create_excel_export(
             ]
         })
 
-    elif product_type == "Step-Down Autocall":
+    elif product_type in ["Step-Down Autocall", "Autocall + Participation"]:
 
         schedule_text = ""
 
@@ -345,6 +345,15 @@ def create_excel_export(
             classic_inputs,
             columns=["Input", "Value"]
         )
+
+    if product_type == "Autocall + Participation":
+        inputs_df = inputs_df[inputs_df["Input"] != "Capital Barrier (%)"]
+        inputs_df = pd.concat([inputs_df, pd.DataFrame([
+            {"Input": "Capital Protection (%)", "Value": 100.0},
+            {"Input": "Participation Rate (%)", "Value": participation_rate},
+            {"Input": "Participation Strike (%)", "Value": 100.0},
+            {"Input": "Maturity Payoff", "Value": "100% + participation rate x positive growth; no coupon or autocall at maturity"}
+        ])], ignore_index=True)
 
     with pd.ExcelWriter(
         output,

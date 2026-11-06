@@ -17,7 +17,8 @@ def run_single_backtest(
     notional,
     step_down_schedule=None,
     apply_one_star_barrier=False,
-    one_star_barrier=None
+    one_star_barrier=None,
+    participation_rate=500.0
 ):
     df = df.copy()
     trade_date = pd.to_datetime(trade_date)
@@ -51,6 +52,11 @@ def run_single_backtest(
     if maturity_date > df[date_column].max():
         return None
 
+    if product_type == "Autocall + Participation":
+        observation_months = [
+            month for month in observation_months if month < tenor_months
+        ]
+
     for month in observation_months:
         scheduled_date = actual_trade_date + pd.DateOffset(months=month)
 
@@ -72,7 +78,7 @@ def run_single_backtest(
 
         coupon_return = coupon_pa * (month / 12)
 
-        if product_type == "Step-Down Autocall":
+        if product_type in ["Step-Down Autocall", "Autocall + Participation"]:
 
             if step_down_schedule:
 
@@ -148,7 +154,11 @@ def run_single_backtest(
 
     one_star_underlying = None
 
-    if worst_final_performance >= capital_barrier / 100:
+    if product_type == "Autocall + Participation":
+        final_event = "Matured, Participation"
+        final_return = participation_rate * max(worst_final_performance - 1, 0)
+        payoff = notional * (1 + final_return / 100)
+    elif worst_final_performance >= capital_barrier / 100:
         final_event = "Matured, Capital Protected"
         final_return = 0
         payoff = notional
@@ -213,6 +223,11 @@ def run_single_backtest(
         "Annualised Return (%)": round(annualised_return, 2),
     }
 
+    if product_type == "Autocall + Participation":
+        result["Participation Rate (%)"] = participation_rate
+        result["Participation Strike (%)"] = 100.0
+        result["Participation Return (%)"] = round(final_return, 2)
+
     if (
         product_type == "Classic Autocall"
         and apply_one_star_barrier
@@ -246,7 +261,8 @@ def run_backtest(
     notional,
     step_down_schedule=None,
     apply_one_star_barrier=False,
-    one_star_barrier=None
+    one_star_barrier=None,
+    participation_rate=500.0
 ):
     df = df.copy()
 
@@ -294,7 +310,8 @@ def run_backtest(
             notional=notional,
             step_down_schedule=step_down_schedule,
             apply_one_star_barrier=apply_one_star_barrier,
-            one_star_barrier=one_star_barrier
+            one_star_barrier=one_star_barrier,
+            participation_rate=participation_rate
         )
 
         if result is not None:

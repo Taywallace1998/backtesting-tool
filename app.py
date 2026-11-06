@@ -49,6 +49,7 @@ product_type = st.sidebar.selectbox(
     [
         "Classic Autocall",
         "Step-Down Autocall",
+        "Autocall + Participation",
         "Phoenix Autocall",
         "Step-Down Phoenix Autocall",
         "Conditional Income",
@@ -63,9 +64,9 @@ tenor_months = st.sidebar.number_input(
     "Tenor (months)",
     min_value=1,
     max_value=120,
-    value=72,
+    value=60 if product_type == "Autocall + Participation" else 72,
     step=1,
-    key="tenor_months"
+    key=("participation_autocall_tenor" if product_type == "Autocall + Participation" else "tenor_months")
 )
 
 # Fixed 100 reference amount for payoff calculations
@@ -327,7 +328,7 @@ elif product_type != "Participation":
 
     step_down_schedule = None
 
-    if product_type == "Step-Down Autocall":
+    if product_type in ["Step-Down Autocall", "Autocall + Participation"]:
 
         step_down_size = 0.0
 
@@ -348,7 +349,10 @@ elif product_type != "Participation":
             )
         )
 
-        if tenor_months not in stepdown_months:
+        if product_type == "Autocall + Participation":
+            stepdown_months = [m for m in stepdown_months if m < tenor_months]
+
+        if product_type != "Autocall + Participation" and tenor_months not in stepdown_months:
             stepdown_months.append(
                 tenor_months
             )
@@ -362,8 +366,8 @@ elif product_type != "Participation":
             ),
             "Month": stepdown_months,
             "Autocall Trigger (%)": [
-                float(autocall_trigger)
-                for _ in stepdown_months
+                float(autocall_trigger) + (i if product_type == "Autocall + Participation" else 0)
+                for i, _ in enumerate(stepdown_months)
             ]
         })
 
@@ -389,7 +393,7 @@ elif product_type != "Participation":
                     )
                 )
             },
-            key="step_down_schedule_editor"
+            key=("participation_autocall_schedule" if product_type == "Autocall + Participation" else "step_down_schedule_editor")
         )
 
         step_down_schedule = {
@@ -510,15 +514,19 @@ elif product_type != "Participation":
         key="coupon_pa"
     )
 
-    capital_barrier = st.sidebar.number_input(
-        "Capital Barrier (%)",
-        min_value=0.0,
-        max_value=100.0,
-        value=60.0,
-        step=0.25,
-        format="%.2f",
-        key="capital_barrier"
-    )
+    if product_type == "Autocall + Participation":
+        capital_barrier = None
+        st.sidebar.caption("100% capital protected. No autocall or coupon at maturity.")
+    else:
+        capital_barrier = st.sidebar.number_input(
+            "Capital Barrier (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=60.0,
+            step=0.25,
+            format="%.2f",
+            key="capital_barrier"
+        )
 
     selected_underlyings = st.session_state.get(
         "price_columns",
@@ -548,11 +556,20 @@ elif product_type != "Participation":
                 key="one_star_barrier"
             )
 
-    # Participation variables not used
-    participation_rate = None
-    participation_strike = None
-    protection_type = None
-    protection_level = None
+    if product_type == "Autocall + Participation":
+        participation_rate = st.sidebar.number_input(
+            "Participation Rate (%)", min_value=0.0, max_value=1000.0,
+            value=500.0, step=0.25, format="%.2f",
+            key="participation_autocall_rate"
+        )
+        participation_strike = 100.0
+        protection_type = "100% Protected"
+        protection_level = 100.0
+    else:
+        participation_rate = None
+        participation_strike = None
+        protection_type = None
+        protection_level = None
     upside_cap = None
 
 
@@ -739,8 +756,8 @@ if uploaded_file is not None:
                 "Value": f"{coupon_pa:.2f}%"
             },
             {
-                "Parameter": "Capital Barrier",
-                "Value": f"{capital_barrier:.2f}%"
+                "Parameter": ("Capital Protection" if product_type == "Autocall + Participation" else "Capital Barrier"),
+                "Value": ("100.00%" if product_type == "Autocall + Participation" else f"{capital_barrier:.2f}%")
             }
         ]
 
@@ -880,8 +897,8 @@ if uploaded_file is not None:
                 "Value": f"{coupon_pa:.2f}%"
             },
             {
-                "Parameter": "Capital Barrier",
-                "Value": f"{capital_barrier:.2f}%"
+                "Parameter": ("Capital Protection" if product_type == "Autocall + Participation" else "Capital Barrier"),
+                "Value": ("100.00%" if product_type == "Autocall + Participation" else f"{capital_barrier:.2f}%")
             }
         ])
 
@@ -895,7 +912,7 @@ if uploaded_file is not None:
                 "Value": f"{one_star_barrier:.2f}%"
             })
 
-        if product_type == "Step-Down Autocall":
+        if product_type in ["Step-Down Autocall", "Autocall + Participation"]:
 
             schedule_text = ", ".join(
                 f"{month}m: {trigger:.2f}%"
@@ -937,6 +954,13 @@ if uploaded_file is not None:
                 "Value": memory_coupon
             })
 
+    if product_type == "Autocall + Participation":
+        summary_data.extend([
+            {"Parameter": "Participation Rate at Maturity", "Value": f"{participation_rate:.2f}%"},
+            {"Parameter": "Participation Strike", "Value": "100.00%"},
+            {"Parameter": "Maturity Payoff", "Value": "100% + participation rate x positive index growth. No coupon."}
+        ])
+
     summary = pd.DataFrame(summary_data)
 
     st.table(summary)
@@ -945,7 +969,7 @@ if uploaded_file is not None:
     # Step-down schedule preview
     # =========================
 
-    if product_type == "Step-Down Autocall":
+    if product_type in ["Step-Down Autocall", "Autocall + Participation"]:
 
         stepdown_schedule_df = pd.DataFrame({
             "Observation": list(
@@ -962,7 +986,7 @@ if uploaded_file is not None:
             )
         })
 
-        st.subheader("Step-Down Schedule")
+        st.subheader("Autocall Trigger Schedule")
 
         st.dataframe(
             stepdown_schedule_df,
@@ -1023,7 +1047,8 @@ if uploaded_file is not None:
 
         if product_type in [
             "Classic Autocall",
-            "Step-Down Autocall"
+            "Step-Down Autocall",
+            "Autocall + Participation"
         ]:
 
             results = run_classic_backtest(
@@ -1040,6 +1065,7 @@ if uploaded_file is not None:
                 step_down_schedule=step_down_schedule,
                 capital_barrier=capital_barrier,
                 notional=notional,
+                participation_rate=participation_rate,
                 apply_one_star_barrier=(
                     apply_one_star_barrier
                     if product_type == "Classic Autocall"
@@ -1554,8 +1580,7 @@ if uploaded_file is not None:
             total_tested = len(results)
 
             returned_full_capital = (
-                results["Event"]
-                == "Matured, Capital Protected"
+                results["Event"].isin(["Matured, Capital Protected", "Matured, Participation"])
             ).sum()
 
             barrier_breached = (
@@ -1655,8 +1680,7 @@ if uploaded_file is not None:
             total_tested = len(results)
 
             returned_full_capital = (
-                results["Event"]
-                == "Matured, Capital Protected"
+                results["Event"].isin(["Matured, Capital Protected", "Matured, Participation"])
             ).sum()
 
             barrier_breached = (
@@ -1757,8 +1781,7 @@ if uploaded_file is not None:
             ).sum()
 
             total_returned_capital = (
-                results["Event"]
-                == "Matured, Capital Protected"
+                results["Event"].isin(["Matured, Capital Protected", "Matured, Participation"])
             ).sum()
 
             total_lost_capital = (
@@ -2106,6 +2129,9 @@ if uploaded_file is not None:
                         scheduled_observation_months
                     )
                 )
+
+            elif product_type == "Autocall + Participation":
+                scheduled_observation_months = sorted(step_down_schedule.keys())
 
             elif product_type in [
                 "Phoenix Autocall",
@@ -2479,6 +2505,13 @@ if uploaded_file is not None:
                         selected_inputs[
                             "one_star_barrier"
                         ] = one_star_barrier
+
+        if product_type == "Autocall + Participation":
+            selected_inputs.update({
+                "participation_rate": participation_rate,
+                "participation_strike": participation_strike,
+                "protection_level": protection_level
+            })
 
         st.json(
             selected_inputs
